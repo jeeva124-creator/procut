@@ -12,17 +12,28 @@ import { VideosPanel } from "@/components/videos-panel";
 // import { ImagesPanel } from "@/components/images-panel";
 import { ElementsPanel } from "@/components/elements-panel";
 import { ExportPanel } from "@/components/export-panel"; 
-import type { VideoTransform } from "@/components/canvas-panel";
 
-export type PanelType =
-  | "media"
-  | "canvas"
-  | "text"
-  | "audio"
-  
-  | "elements";
+export interface Clip {
+  id: string;
+  name: string;
+  duration: number;
+  startTime: number;
+  type: "video" | "audio" | "image";
+  thumbnail?: string;
+}
 
-interface TextLayer {
+export interface VideoTransform {
+  position: { x: number; y: number }
+  scale: number
+  rotation: number
+  opacity: number
+  flipHorizontal: boolean
+  flipVertical: boolean
+  cropMode: "fill" | "fit" | "crop"   
+}
+
+
+export interface TextLayer {
   id: string;
   text: string;
   x: number;
@@ -32,7 +43,7 @@ interface TextLayer {
   fontFamily: string;
 }
 
-interface Element {
+export interface Element {
   id: string;
   type: "shape" | "overlay";
   name: string;
@@ -46,20 +57,28 @@ interface Element {
   animation?: string;
 }
 
+export type PanelType =
+  | "media"
+  | "canvas"
+  | "text"
+  | "audio"
+  | "elements";
+
 export default function VideoEditor() {
   const [activePanel, setActivePanel] = useState<PanelType>("media");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(1.88);
   const [selectedClip, setSelectedClip] = useState<string | null>(null);
-  const [currentClip, setCurrentClip] = useState<any>(null);
-  const [clips, setClips] = useState([
+  const [currentClip, setCurrentClip] = useState<Clip | null>(null);
+
+  const [clips, setClips] = useState<Clip[]>([
     {
       id: "1",
       name: "04-1.webm",
       duration: 2,
       startTime: 0,
-      type: "video" as const,
+      type: "video",
       thumbnail: "/sample-video-clip.jpg",
     },
   ]);
@@ -73,10 +92,11 @@ export default function VideoEditor() {
     flipVertical: false,
     cropMode: "fit",
   });
+
   const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
   const [elements, setElements] = useState<Element[]>([]);
 
-  const handleClipSelect = (clip: any) => {
+  const handleClipSelect = (clip: Clip) => {
     console.log("[v0] Setting current clip:", clip.name);
     setCurrentClip(clip);
     setSelectedClip(clip.id);
@@ -110,11 +130,12 @@ export default function VideoEditor() {
             onClipSelect={handleClipSelect}
           />
         );
+
       case "canvas":
         return (
           <CanvasPanel
             selectedClip={selectedClip}
-            onTransformChange={setTransform}
+            onTransformChange={setTransform}   
           />
         );
       case "text":
@@ -139,9 +160,6 @@ export default function VideoEditor() {
             onElementDelete={handleElementDelete}
           />
         );
-      // case "record":
-      //   return <RecordPanel />
-
       default:
         return (
           <MediaPanel
@@ -166,6 +184,7 @@ export default function VideoEditor() {
         {renderSidePanel()}
       </div>
 
+     
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar with Export */}
