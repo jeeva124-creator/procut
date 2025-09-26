@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { VerticalSidebar } from "@/components/vertical-sidebar";
 import { MediaPanel } from "@/components/media-panel";
 import { PreviewWindow } from "@/components/preview-window";
@@ -20,6 +20,11 @@ export interface Clip {
   startTime: number;
   type: "video" | "audio" | "image";
   thumbnail?: string;
+  file?: File;
+  url?: string;
+  // Trim properties - these define the playable portion of the clip
+  trimStart: number; // Start time within the original video (in seconds)
+  trimEnd: number;   // End time within the original video (in seconds)
 }
 
 export interface VideoTransform {
@@ -68,9 +73,24 @@ export default function VideoEditor() {
   const [activePanel, setActivePanel] = useState<PanelType>("media");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(1.88);
+  const [duration, setDuration] = useState(10); // Default to 10 seconds, will be updated by video
   const [selectedClip, setSelectedClip] = useState<string | null>(null);
   const [currentClip, setCurrentClip] = useState<Clip | null>(null);
+  const [usingTrimmedDuration, setUsingTrimmedDuration] = useState(false);
+  const [volume, setVolume] = useState(80); // Default volume at 80%
+
+  // Listen for video trim end events
+  useEffect(() => {
+    const handleVideoTrimEnd = () => {
+      console.log("[v0] Video trim end event received, stopping playback")
+      setIsPlaying(false)
+    }
+
+    window.addEventListener('videoTrimEnd', handleVideoTrimEnd)
+    return () => {
+      window.removeEventListener('videoTrimEnd', handleVideoTrimEnd)
+    }
+  }, [])
 
   const [clips, setClips] = useState<Clip[]>([
     {
@@ -80,6 +100,8 @@ export default function VideoEditor() {
       startTime: 0,
       type: "video",
       thumbnail: "/sample-video-clip.jpg",
+      trimStart: 0,
+      trimEnd: 2,
     },
   ]);
 
@@ -95,11 +117,38 @@ export default function VideoEditor() {
 
   const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
   const [elements, setElements] = useState<Element[]>([]);
+  const [videoAdjustments, setVideoAdjustments] = useState({
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    hue: 0,
+  });
+  const [playbackSpeed, setPlaybackSpeed] = useState(100);
+  const [timeSettings, setTimeSettings] = useState({
+    startTime: 0,
+    endTime: 100,
+    fadeIn: 0,
+    fadeOut: 0,
+  });
 
   const handleClipSelect = (clip: Clip) => {
-    console.log("[v0] Setting current clip:", clip.name);
+    console.log("[v0] Setting current clip:", clip.name, "Trim:", clip.trimStart, "-", clip.trimEnd);
     setCurrentClip(clip);
     setSelectedClip(clip.id);
+    setCurrentTime(0); // Reset time when switching clips
+    
+    // Set duration to the trimmed duration for timeline display
+    if (clip.trimEnd > clip.trimStart) {
+      const trimmedDuration = clip.trimEnd - clip.trimStart;
+      setDuration(trimmedDuration);
+      setUsingTrimmedDuration(true);
+      console.log("[v0] Setting duration to trimmed length:", trimmedDuration);
+    } else {
+      // Fallback to full duration if trim values aren't set
+      setDuration(clip.duration);
+      setUsingTrimmedDuration(false);
+      console.log("[v0] Using full clip duration:", clip.duration);
+    }
   };
 
   const handleTextLayerAdd = (textLayer: TextLayer) => {
@@ -120,6 +169,37 @@ export default function VideoEditor() {
     setElements((prev) => prev.filter((el) => el.id !== id));
   };
 
+  const handleTextLayerRemove = (id: string) => {
+    setTextLayers((prev) => prev.filter((layer) => layer.id !== id));
+  };
+
+  const handleClipRemove = (id: string) => {
+    setClips((prev) => {
+      const updatedClips = prev.filter((clip) => clip.id !== id);
+      // If the removed clip was selected, clear the selection
+      if (selectedClip === id) {
+        setSelectedClip(null);
+        setCurrentClip(null);
+      }
+      return updatedClips;
+    });
+  };
+
+  const handleAdjustmentsChange = (adjustments: any) => {
+    setVideoAdjustments(adjustments);
+    console.log("[v0] Video adjustments updated in main app:", adjustments);
+  };
+
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackSpeed(speed);
+    console.log("[v0] Playback speed updated in main app:", speed);
+  };
+
+  const handleTimeSettingsChange = (settings: any) => {
+    setTimeSettings(settings);
+    console.log("[v0] Time settings updated in main app:", settings);
+  };
+
   const renderSidePanel = () => {
     switch (activePanel) {
       case "media":
@@ -128,6 +208,12 @@ export default function VideoEditor() {
             clips={clips}
             setClips={setClips}
             onClipSelect={handleClipSelect}
+            onClipRemove={handleClipRemove}
+            onPlayPause={() => {
+              console.log("[v0] Media panel play/pause clicked, current state:", isPlaying)
+              setIsPlaying(!isPlaying)
+            }}
+            isPlaying={isPlaying}
           />
         );
 
@@ -135,7 +221,10 @@ export default function VideoEditor() {
         return (
           <CanvasPanel
             selectedClip={selectedClip}
-            onTransformChange={setTransform}   
+            onTransformChange={setTransform}
+            onAdjustmentsChange={handleAdjustmentsChange}
+            onSpeedChange={handleSpeedChange}
+            onTimeSettingsChange={handleTimeSettingsChange}
           />
         );
       case "text":
@@ -143,6 +232,7 @@ export default function VideoEditor() {
           <TextPanel
             selectedClip={selectedClip}
             onTextLayerAdd={handleTextLayerAdd}
+            onTextLayerRemove={handleTextLayerRemove}
             textLayers={textLayers}
           />
         );
@@ -166,6 +256,12 @@ export default function VideoEditor() {
             clips={clips}
             setClips={setClips}
             onClipSelect={handleClipSelect}
+            onClipRemove={handleClipRemove}
+            onPlayPause={() => {
+              console.log("[v0] Media panel play/pause clicked, current state:", isPlaying)
+              setIsPlaying(!isPlaying)
+            }}
+            isPlaying={isPlaying}
           />
         );
     }
@@ -180,15 +276,15 @@ export default function VideoEditor() {
       />
 
       {/* Left Panel */}
-      <div className="w-80 bg-[#2a2a2a] border-r border-[#3a3a3a] flex flex-col">
+      <div className="w-[440px] bg-[#2a2a2a] border-r border-[#3a3a3a] flex flex-col">
         {renderSidePanel()}
       </div>
 
      
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Top Bar with Export */}
-        <div className="h-12 bg-[#2a2a2a] border-b border-[#3a3a3a] flex items-center justify-end px-4">
+        <div className="h-12 bg-[#2a2a2a] border-b border-[#3a3a3a] flex items-center justify-end px-4 flex-shrink-0">
           <ExportPanel
             clips={clips}
             currentClip={currentClip}
@@ -199,11 +295,20 @@ export default function VideoEditor() {
         </div>
 
         {/* Preview Window */}
-        <div className="flex-1 bg-[#1a1a1a] p-4">
+        <div className="flex-1 bg-[#1a1a1a] p-4 min-h-0 overflow-hidden">
           <PreviewWindow
             isPlaying={isPlaying}
             currentTime={currentTime}
             onTimeUpdate={setCurrentTime}
+            onDurationUpdate={(newDuration) => {
+              // Only update duration if we're not using a trimmed duration
+              if (!usingTrimmedDuration) {
+                console.log("[v0] Updating duration from video metadata:", newDuration);
+                setDuration(newDuration);
+              } else {
+                console.log("[v0] Ignoring duration update - using trimmed duration");
+              }
+            }}
             clips={clips}
             selectedClip={selectedClip}
             currentClip={currentClip}
@@ -211,21 +316,40 @@ export default function VideoEditor() {
             textLayers={textLayers}
             elements={elements}
             onElementUpdate={handleElementUpdate}
+            videoAdjustments={videoAdjustments}
+            playbackSpeed={playbackSpeed}
+            volume={volume}
           />
         </div>
 
         {/* Bottom Timeline */}
-        <div className="h-48 bg-[#2a2a2a] border-t border-[#3a3a3a]">
+        <div className="h-72 bg-[#2a2a2a] border-t border-[#3a3a3a] flex-shrink-0 overflow-hidden">
           <BottomTimeline
             clips={clips}
             duration={duration}
             currentTime={currentTime}
             isPlaying={isPlaying}
             onTimeChange={setCurrentTime}
-            onPlayPause={() => setIsPlaying(!isPlaying)}
+            onPlayPause={() => {
+              console.log("[v0] Play/Pause button clicked, current state:", isPlaying)
+              setIsPlaying(!isPlaying)
+            }}
             selectedClip={selectedClip}
             onClipSelect={setSelectedClip}
             setClips={setClips}
+            onTrimChange={(clipId, trimStart, trimEnd) => {
+              // Update duration if this is the currently selected clip
+              if (clipId === selectedClip) {
+                const trimmedDuration = trimEnd - trimStart
+                setDuration(trimmedDuration)
+                setUsingTrimmedDuration(true)
+                console.log("[v0] Updated duration due to trim change:", trimmedDuration)
+              }
+            }}
+            onVolumeChange={(newVolume) => {
+              setVolume(newVolume)
+              console.log("[v0] Volume changed to:", newVolume)
+            }}
           />
         </div>
       </div>

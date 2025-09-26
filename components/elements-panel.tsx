@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Square, Circle, Triangle, Star, Heart, Zap, Sparkles, Trash2 } from "lucide-react"
+import { Square, Circle, Triangle, Star, Heart, Zap, Sparkles, Trash2, Shapes } from "lucide-react"
 
 interface Element {
   id: string
@@ -41,12 +41,12 @@ export function ElementsPanel({
   const [selectedElement, setSelectedElement] = useState<string | null>(null)
 
   const shapes = [
-    { icon: Square, name: "Rectangle", color: "text-blue-400", defaultColor: "#3b82f6" },
-    { icon: Circle, name: "Circle", color: "text-green-400", defaultColor: "#10b981" },
-    { icon: Triangle, name: "Triangle", color: "text-red-400", defaultColor: "#ef4444" },
-    { icon: Star, name: "Star", color: "text-yellow-400", defaultColor: "#f59e0b" },
-    { icon: Heart, name: "Heart", color: "text-pink-400", defaultColor: "#ec4899" },
-    { icon: Zap, name: "Lightning", color: "text-purple-400", defaultColor: "#8b5cf6" },
+    { icon: Square, name: "Rectangle", color: "text-white", defaultColor: "#6b7280" },
+    { icon: Circle, name: "Circle", color: "text-white", defaultColor: "#6b7280" },
+    { icon: Triangle, name: "Triangle", color: "text-white", defaultColor: "#6b7280" },
+    { icon: Star, name: "Star", color: "text-white", defaultColor: "#6b7280" },
+    { icon: Heart, name: "Heart", color: "text-white", defaultColor: "#6b7280" },
+    { icon: Zap, name: "Lightning", color: "text-white", defaultColor: "#6b7280" },
   ]
 
   const animations = ["Fade In", "Slide In", "Zoom In", "Bounce", "Rotate", "Pulse"]
@@ -98,26 +98,40 @@ export function ElementsPanel({
   const selectedElementData = elements.find((el) => el.id === selectedElement)
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-[#3a3a3a]">
-        <h2 className="text-lg font-semibold text-white mb-3">Elements</h2>
+    <div className="h-full flex flex-col bg-[#1a1a1a]">
+      {/* Header */}
+      <div className="p-4 border-b border-[#3a3a3a] bg-[#2a2a2a]">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center">
+            <Shapes className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">Elements Studio</h2>
+            <p className="text-xs text-gray-400">Add shapes, overlays and animations</p>
+          </div>
+        </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-6">
+      <ScrollArea className="flex-1 p-6">
+        <div className="space-y-8">
           {/* Shapes */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-white">Shapes</h3>
-            <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                <Square className="h-3 w-3 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Shapes</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
               {shapes.map((shape) => (
                 <Button
                   key={shape.name}
                   variant="outline"
-                  className="aspect-square bg-[#1a1a1a] border-[#3a3a3a] hover:bg-[#2a2a2a] flex flex-col items-center justify-center gap-1"
+                  className="aspect-square bg-[#0f0f0f] border-[#3a3a3a] hover:bg-blue-600 hover:border-blue-600 flex flex-col items-center justify-center gap-2 transition-all h-20"
                   onClick={() => handleShapeAdd(shape)}
                 >
-                  <shape.icon className={`h-6 w-6 ${shape.color}`} />
-                  <span className="text-xs text-gray-400">{shape.name}</span>
+                  <shape.icon className={`h-7 w-7 ${shape.color}`} />
+                  <span className="text-xs text-gray-300 font-medium">{shape.name}</span>
                 </Button>
               ))}
             </div>
@@ -126,18 +140,23 @@ export function ElementsPanel({
           <Separator className="bg-[#3a3a3a]" />
 
           {/* Overlays */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-white">Overlays</h3>
-            <div className="space-y-2">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded opacity-50"></div>
+              </div>
+              <h3 className="text-sm font-bold text-white">Overlays</h3>
+            </div>
+            <div className="space-y-3">
               {overlays.map((overlay) => (
                 <Button
                   key={overlay.name}
                   variant="outline"
-                  className="w-full justify-start bg-[#1a1a1a] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]"
+                  className="w-full justify-start bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-blue-600 hover:border-blue-600 transition-all h-12 font-medium"
                   onClick={() => handleOverlayAdd(overlay)}
                 >
                   <div
-                    className="w-4 h-4 mr-2"
+                    className="w-5 h-5 mr-3 rounded"
                     style={{
                       background: overlay.color,
                     }}
@@ -151,24 +170,53 @@ export function ElementsPanel({
           <Separator className="bg-[#3a3a3a]" />
 
           {/* Element List */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-white">Added Elements</h3>
-            <div className="space-y-2">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                <Sparkles className="h-3 w-3 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Added Elements</h3>
+              {elements.length > 0 && (
+                <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                  {elements.length}
+                </div>
+              )}
+            </div>
+            <div className="space-y-3">
+              {elements.length === 0 && (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-[#2a2a2a] rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Sparkles className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p className="text-sm text-gray-400 font-medium">No elements added yet</p>
+                  <p className="text-xs text-gray-500 mt-1">Add shapes or overlays to get started</p>
+                </div>
+              )}
               {elements.map((element) => (
                 <div
                   key={element.id}
-                  className={`p-2 rounded border cursor-pointer flex items-center justify-between ${
+                  className={`p-4 rounded-lg border cursor-pointer flex items-center justify-between transition-colors group ${
                     selectedElement === element.id
                       ? "bg-[#2a2a2a] border-blue-500"
-                      : "bg-[#1a1a1a] border-[#3a3a3a] hover:bg-[#2a2a2a]"
+                      : "bg-[#0f0f0f] border-[#3a3a3a] hover:bg-[#2a2a2a] hover:border-[#4a4a4a]"
                   }`}
                   onClick={() => setSelectedElement(element.id)}
                 >
-                  <span className="text-sm text-white">{element.name}</span>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-white">{element.name}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs bg-[#2a2a2a] px-2 py-1 rounded text-gray-300 capitalize">
+                        {element.type}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {element.width}×{element.height}
+                      </span>
+                    </div>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 text-red-400 hover:text-red-300"
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation()
                       onElementDelete(element.id)
@@ -177,7 +225,7 @@ export function ElementsPanel({
                       }
                     }}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
@@ -189,43 +237,61 @@ export function ElementsPanel({
             <>
               <Separator className="bg-[#3a3a3a]" />
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-white">Properties</h3>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                    <div className="w-3 h-3 bg-white rounded"></div>
+                  </div>
+                  <h3 className="text-sm font-bold text-white">Properties</h3>
+                </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-gray-400">Opacity</Label>
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-gray-300">Opacity</Label>
+                      <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
+                        {selectedElementData.opacity}%
+                      </div>
+                    </div>
                     <Slider
                       value={[selectedElementData.opacity]}
                       onValueChange={([value]) => onElementUpdate(selectedElement!, { opacity: value })}
                       max={100}
                       step={1}
-                      className="mt-1"
+                      className="w-full"
                     />
-                    <span className="text-xs text-gray-400">{selectedElementData.opacity}%</span>
                   </div>
 
-                  <div>
-                    <Label className="text-xs text-gray-400">Rotation</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-gray-300">Rotation</Label>
+                      <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
+                        {selectedElementData.rotation}°
+                      </div>
+                    </div>
                     <Slider
                       value={[selectedElementData.rotation]}
                       onValueChange={([value]) => onElementUpdate(selectedElement!, { rotation: value })}
                       min={-180}
                       max={180}
                       step={1}
-                      className="mt-1"
+                      className="w-full"
                     />
-                    <span className="text-xs text-gray-400">{selectedElementData.rotation}°</span>
                   </div>
 
                   {selectedElementData.type === "shape" && (
-                    <div>
-                      <Label className="text-xs text-gray-400">Color</Label>
-                      <Input
-                        type="color"
-                        value={selectedElementData.color}
-                        onChange={(e) => onElementUpdate(selectedElement!, { color: e.target.value })}
-                        className="mt-1 h-8 bg-[#1a1a1a] border-[#3a3a3a]"
-                      />
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium text-gray-300">Color</Label>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          type="color"
+                          value={selectedElementData.color}
+                          onChange={(e) => onElementUpdate(selectedElement!, { color: e.target.value })}
+                          className="w-16 h-10 rounded-lg border-[#3a3a3a] bg-[#0f0f0f] cursor-pointer"
+                        />
+                        <div className="flex-1 text-sm text-gray-400 font-mono bg-[#0f0f0f] border border-[#3a3a3a] rounded-lg px-3 py-2">
+                          {selectedElementData.color}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -236,24 +302,38 @@ export function ElementsPanel({
           <Separator className="bg-[#3a3a3a]" />
 
           {/* Animations */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-white">Animations</h3>
-            <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                <Sparkles className="h-3 w-3 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Animations</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               {animations.map((animation) => (
                 <Button
                   key={animation}
                   variant="outline"
                   size="sm"
-                  className="bg-[#1a1a1a] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]"
+                  className={`bg-[#0f0f0f] border-[#3a3a3a] text-white transition-all gap-2 h-12 font-medium ${
+                    selectedElement 
+                      ? "hover:bg-blue-600 hover:border-blue-600" 
+                      : "opacity-50 cursor-not-allowed"
+                  }`}
                   onClick={() => handleAnimationApply(animation)}
                   disabled={!selectedElement}
                 >
-                  <Sparkles className="h-4 w-4 mr-1 text-purple-400" />
+                  <Sparkles className="h-4 w-4 text-white" />
                   {animation}
                 </Button>
               ))}
             </div>
-            {!selectedElement && <p className="text-xs text-gray-500">Select an element to apply animations</p>}
+            {!selectedElement && (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-400 font-medium">Select an element first</p>
+                <p className="text-xs text-gray-500 mt-1">Choose an element to apply animations</p>
+              </div>
+            )}
           </div>
         </div>
       </ScrollArea>

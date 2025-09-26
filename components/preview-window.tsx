@@ -12,6 +12,8 @@ interface Clip {
   thumbnail?: string
   file?: File
   url?: string
+  trimStart: number
+  trimEnd: number
 }
 
 interface TextLayer {
@@ -42,6 +44,7 @@ interface PreviewWindowProps {
   isPlaying: boolean
   currentTime: number
   onTimeUpdate: (time: number) => void
+  onDurationUpdate?: (duration: number) => void
   clips: Clip[]
   selectedClip: string | null
   currentClip?: Clip | null
@@ -49,12 +52,21 @@ interface PreviewWindowProps {
   textLayers?: TextLayer[]
   elements?: Element[]
   onElementUpdate?: (id: string, updates: Partial<Element>) => void
+  videoAdjustments?: {
+    brightness: number
+    contrast: number
+    saturation: number
+    hue: number
+  }
+  playbackSpeed?: number
+  volume?: number
 }
 
 export function PreviewWindow({
   isPlaying,
   currentTime,
   onTimeUpdate,
+  onDurationUpdate,
   clips,
   selectedClip,
   currentClip,
@@ -62,10 +74,14 @@ export function PreviewWindow({
   textLayers = [],
   elements = [],
   onElementUpdate,
+  videoAdjustments = { brightness: 0, contrast: 0, saturation: 0, hue: 0 },
+  playbackSpeed = 100,
+  volume = 80,
 }: PreviewWindowProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const animationIdRef = useRef<number | undefined>(undefined)
+  const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
 
   const [showVideo, setShowVideo] = useState(false)
 
@@ -285,7 +301,21 @@ export function PreviewWindow({
   useEffect(() => {
     if (currentClip && currentClip.type === "video" && currentClip.url) {
       setShowVideo(true)
-      console.log("[v0] Loading video:", currentClip.name)
+      console.log("[v0] Loading video:", currentClip.name, "with trim:", currentClip.trimStart, "-", currentClip.trimEnd)
+      // Set the video element to start at the trim start point
+      const video = videoRef.current
+      if (video) {
+        // Wait for metadata to load, then set the correct start time
+        const handleLoadedData = () => {
+          video.currentTime = currentClip.trimStart || 0
+          video.removeEventListener('loadeddata', handleLoadedData)
+        }
+        video.addEventListener('loadeddata', handleLoadedData)
+        // Also try setting it immediately in case metadata is already loaded
+        if (video.readyState >= 2) {
+          video.currentTime = currentClip.trimStart || 0
+        }
+      }
     } else {
       setShowVideo(false)
     }
@@ -296,11 +326,49 @@ export function PreviewWindow({
     if (!video || !showVideo) return
 
     const handleTimeUpdate = () => {
-      onTimeUpdate(video.currentTime)
+      const videoTime = video.currentTime
+      
+      // Check if we have a current clip with trim boundaries
+      if (currentClip && currentClip.trimEnd > currentClip.trimStart) {
+        // If we've reached the end of the trimmed section, pause and loop
+        if (videoTime >= currentClip.trimEnd) {
+          console.log("[v0] Reached trim end, looping to trim start")
+          video.currentTime = currentClip.trimStart
+          onTimeUpdate(0) // Report 0 for timeline display
+          return
+        }
+        
+        // If video is before trim start, jump to trim start
+        if (videoTime < currentClip.trimStart) {
+          video.currentTime = currentClip.trimStart
+          onTimeUpdate(0)
+          return
+        }
+        
+        // Report the time relative to the trim start
+        const trimmedTime = videoTime - currentClip.trimStart
+        onTimeUpdate(trimmedTime)
+      } else {
+        // No trimming - report raw video time
+        onTimeUpdate(videoTime)
+      }
     }
 
     const handleLoadedMetadata = () => {
-      console.log("[v0] Video loaded, duration:", video.duration)
+      console.log("[v0] Video loaded, actual duration:", video.duration)
+      if (video.duration && isFinite(video.duration)) {
+        // Update the current clip's trimEnd to the full duration if it's not set
+        if (currentClip && currentClip.trimEnd <= currentClip.trimStart) {
+          currentClip.trimEnd = video.duration
+          console.log("[v0] Updated clip trimEnd to:", video.duration)
+          
+          // Only update app duration if we're setting initial trim values
+          if (onDurationUpdate) {
+            onDurationUpdate(video.duration)
+          }
+        }
+        // Don't update app duration if trim values are already set - let handleClipSelect handle it
+      }
     }
 
     const handleError = (e: Event) => {
@@ -317,18 +385,126 @@ export function PreviewWindow({
       video.removeEventListener("loadedmetadata", handleLoadedMetadata)
       video.removeEventListener("error", handleError)
     }
-  }, [showVideo, onTimeUpdate])
+  }, [showVideo, onTimeUpdate, onDurationUpdate])
 
   useEffect(() => {
     const video = videoRef.current
     if (!video || !showVideo) return
 
+    console.log("[v0] Play/Pause state changed:", isPlaying)
+    
     if (isPlaying) {
-      video.play().catch(console.error)
+      video.play().catch((error) => {
+        console.error("[v0] Error playing video:", error)
+        // Try with muted if autoplay is blocked
+        if (error.name === 'NotAllowedError') {
+          video.muted = true
+          video.play().catch(console.error)
+        }
+      })
     } else {
       video.pause()
     }
   }, [isPlaying, showVideo])
+
+  // Set playback rate when speed changes
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !showVideo) return
+
+    video.playbackRate = playbackSpeed / 100
+  }, [playbackSpeed, showVideo])
+
+  // Set volume when volume changes
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !showVideo) return
+
+    // Debug: Show all clips every time
+    console.log("[v0] DEBUG - All clips in preview window:", clips.map(c => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      url: c.url ? "HAS_URL" : "NO_URL"
+    })))
+
+    const hasCustomAudio = clips.some(clip => clip.type === "audio")
+    
+    if (hasCustomAudio) {
+      // Mute original video audio when custom audio is present
+      video.volume = 0
+      video.muted = true
+      console.log("[v0] Video muted - custom audio present, audio clips:", clips.filter(c => c.type === "audio").length)
+    } else {
+      // Use normal volume when no custom audio
+      video.muted = false
+      video.volume = volume / 100
+      console.log("[v0] Video volume set to:", volume / 100, "- no audio clips found")
+    }
+  }, [volume, showVideo, clips])
+
+  // Manage audio clips
+  useEffect(() => {
+    const audioElements = audioElementsRef.current
+    const audioClips = clips.filter(clip => clip.type === "audio")
+    
+    console.log("[v0] All clips:", clips.length, clips.map(c => `${c.name} (${c.type})`))
+    console.log("[v0] Audio clips found:", audioClips.length, audioClips.map(c => c.name))
+    
+    // Create audio elements for new audio clips
+    audioClips.forEach(clip => {
+      if (!audioElements.has(clip.id) && clip.url) {
+        const audio = new Audio(clip.url)
+        audio.volume = volume / 100
+        audio.currentTime = clip.trimStart
+        audio.loop = false
+        audioElements.set(clip.id, audio)
+        console.log("[v0] Created audio element for:", clip.name, "URL:", clip.url)
+      }
+    })
+
+    // Remove audio elements for deleted clips
+    const currentClipIds = new Set(audioClips.map(clip => clip.id))
+    for (const [clipId, audio] of audioElements.entries()) {
+      if (!currentClipIds.has(clipId)) {
+        audio.pause()
+        audioElements.delete(clipId)
+        console.log("[v0] Removed audio element for:", clipId)
+      }
+    }
+
+    // Update volume for all audio elements
+    for (const audio of audioElements.values()) {
+      audio.volume = volume / 100
+    }
+  }, [clips, volume])
+
+  // Sync audio playback with video
+  useEffect(() => {
+    const audioElements = audioElementsRef.current
+    
+    if (isPlaying) {
+      // Start all audio clips
+      for (const [clipId, audio] of audioElements.entries()) {
+        const clip = clips.find(c => c.id === clipId && c.type === "audio")
+        if (clip) {
+          // Sync audio time with video time
+          const audioTime = Math.max(0, clip.trimStart + currentTime)
+          console.log("[v0] Starting audio:", clip.name, "at time:", audioTime)
+          audio.currentTime = audioTime
+          audio.play().catch((error) => {
+            console.error("[v0] Error playing audio:", error)
+          })
+        }
+      }
+    } else {
+      // Pause all audio clips
+      for (const audio of audioElements.values()) {
+        audio.pause()
+        console.log("[v0] Paused audio")
+      }
+    }
+  }, [isPlaying, clips, currentTime])
 
   const getVideoStyle = () => {
     if (!transform) return {}
@@ -357,10 +533,19 @@ export function PreviewWindow({
         break
     }
 
+    // Create CSS filter string for video adjustments
+    const filterString = [
+      `brightness(${100 + videoAdjustments.brightness}%)`,
+      `contrast(${100 + videoAdjustments.contrast}%)`,
+      `saturate(${100 + videoAdjustments.saturation}%)`,
+      `hue-rotate(${videoAdjustments.hue}deg)`,
+    ].join(" ")
+
     return {
       transform: transformString,
       opacity: transform.opacity / 100,
       objectFit: objectFit,
+      filter: filterString,
       transition: "all 0.2s ease-out",
     }
   }
@@ -376,6 +561,8 @@ export function PreviewWindow({
             style={getVideoStyle()}
             controls={false}
             muted={false}
+            preload="metadata"
+            playsInline
           />
         ) : (
           <canvas ref={canvasRef} width={1920} height={1080} className="w-full h-full object-contain" />

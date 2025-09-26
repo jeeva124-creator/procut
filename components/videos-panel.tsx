@@ -6,7 +6,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Upload, Search, Play, Clock, FileVideo } from "lucide-react"
+import { Upload, Search, Play, Clock, FileVideo, X } from "lucide-react"
 
 interface Clip {
   id: string
@@ -20,9 +20,10 @@ interface Clip {
 interface VideosPanelProps {
   clips: Clip[]
   setClips: (clips: Clip[]) => void
+  onClipRemove?: (id: string) => void
 }
 
-export function VideosPanel({ clips, setClips }: VideosPanelProps) {
+export function VideosPanel({ clips, setClips, onClipRemove }: VideosPanelProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState("all")
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -104,13 +105,32 @@ export function VideosPanel({ clips, setClips }: VideosPanelProps) {
                 </div>
               </div>
 
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 bg-black/50 hover:bg-black/70"
-              >
-                <Play className="h-4 w-4 text-white" />
-              </Button>
+              {/* Action Buttons Overlay */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                {/* Remove Button */}
+                {onClipRemove && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="w-8 h-8 bg-black/50 hover:bg-red-600/70 text-gray-400 hover:text-white"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClipRemove(clip.id)
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+                
+                {/* Play Button */}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="w-8 h-8 bg-black/50 hover:bg-black/70"
+                >
+                  <Play className="h-4 w-4 text-white" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>

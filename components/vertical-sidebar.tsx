@@ -13,7 +13,7 @@ interface VerticalSidebarProps {
 export function VerticalSidebar({ activePanel, setActivePanel }: VerticalSidebarProps) {
   const tools = [
     { id: "media" as PanelType, icon: FolderOpen, label: "Media", color: "text-white" },
-    { id: "canvas" as PanelType, icon: Layers, label: "Canvas", color: "text-white" },
+    { id: "canvas" as PanelType, icon: Layers, label: "Studio", color: "text-white" },
     { id: "text" as PanelType, icon: Type, label: "Text", color: "text-white" },
     { id: "audio" as PanelType, icon: Volume2, label: "Audio", color: "text-white" },
     // { id: "videos" as PanelType, icon: Video, label: "Videos", color: "text-white" },

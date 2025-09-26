@@ -9,12 +9,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, X } from "lucide-react";
+import { Type, AlignLeft, AlignCenter, AlignRight, X } from "lucide-react";
 
 interface TextPanelProps {
   selectedClip: string | null;
   onTextLayerAdd?: (textLayer: TextLayer) => void;
-  onTextLayerRemove?: (id: string) => void;   // ✅ added
+  onTextLayerRemove?: (id: string) => void;
   textLayers?: TextLayer[];
 }
 
@@ -28,7 +28,13 @@ interface TextLayer {
   fontFamily: string;
 }
 
-export function TextPanel({ selectedClip, onTextLayerAdd, onTextLayerRemove, textLayers = [] }: TextPanelProps) {
+export function TextPanel({ 
+  selectedClip, 
+  onTextLayerAdd, 
+  onTextLayerRemove, 
+  textLayers = [] 
+}: TextPanelProps) {
+
   const [text, setText] = useState("");
   const [fontSize, setFontSize] = useState([32]);
   const [fontFamily, setFontFamily] = useState("Arial");
@@ -46,48 +52,87 @@ export function TextPanel({ selectedClip, onTextLayerAdd, onTextLayerRemove, tex
     const newTextLayer: TextLayer = {
       id: `text-${Date.now()}`,
       text,
-      x: 300, // default X position
-      y: 200, // default Y position
+      x: 300,
+      y: 200,
       fontSize: fontSize[0],
       color: textColor,
       fontFamily,
     };
-    onTextLayerAdd?.(newTextLayer);
-    setText("");
+    onTextLayerAdd?.(newTextLayer); // ✅ send to parent
+    setText(""); // clear input
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-[#3a3a3a]">
-        <h2 className="text-lg font-semibold text-white mb-3">Text</h2>
-        <Button onClick={addTextLayer} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-          <Type className="h-4 w-4 mr-2" />
-          Add Text Layer
-        </Button>
+    <div className="h-full flex flex-col bg-[#1a1a1a]">
+      {/* Header */}
+      <div className="p-4 border-b border-[#3a3a3a] bg-[#2a2a2a]">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center">
+            <Type className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">Text Editor</h2>
+            <p className="text-xs text-gray-400">Create and customize text layers</p>
+          </div>
+        </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-6">
+      <ScrollArea className="flex-1 p-6">
+        <div className="space-y-8">
+
+          {/* Text Input Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                <Type className="h-3 w-3 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Content</h3>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-gray-300">Text Content</Label>
+              <Textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Enter your text here..."
+                className="min-h-[100px] bg-[#0f0f0f] border-[#3a3a3a] text-white placeholder-gray-500 rounded-lg focus:border-blue-500 transition-colors"
+              />
+            </div>
+          </div>
+
+         
+
+
+          {/* Text Layers Section */}
           {textLayers.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-400">Text Layers</Label>
-              <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                  <Type className="h-3 w-3 text-white" />
+                </div>
+                <h3 className="text-sm font-bold text-white">Active Layers</h3>
+                <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                  {textLayers.length}
+                </div>
+              </div>
+              <div className="space-y-3">
                 {textLayers.map((layer) => (
                   <div
                     key={layer.id}
-                    className="relative p-2 bg-[#1a1a1a] border border-[#3a3a3a] rounded"
+                    className="relative p-4 bg-[#0f0f0f] border border-[#3a3a3a] rounded-lg hover:border-[#4a4a4a] transition-colors group"
                   >
-                    {/* ✅ Close button */}
                     <button
-                      onClick={() => onTextLayerRemove?.(layer.id)}
-                      className="absolute top-1 right-1 text-gray-400 hover:text-red-500"
+                      onClick={() => {
+                        onTextLayerRemove?.(layer.id)
+                      }
+                      }
+                      className="absolute top-3 right-3 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="h-4 w-4" />
                     </button>
-
-                    <div className="text-white text-sm truncate">{layer.text}</div>
-                    <div className="text-gray-400 text-xs">
-                      {layer.fontSize}px • {layer.fontFamily}
+                    <div className="text-white text-sm font-medium truncate pr-8">{layer.text}</div>
+                    <div className="text-gray-400 text-xs mt-2 flex items-center gap-2">
+                      <span className="bg-[#2a2a2a] px-2 py-1 rounded text-xs">{layer.fontSize}px</span>
+                      <span className="bg-[#2a2a2a] px-2 py-1 rounded text-xs">{layer.fontFamily}</span>
                     </div>
                   </div>
                 ))}
@@ -95,53 +140,79 @@ export function TextPanel({ selectedClip, onTextLayerAdd, onTextLayerRemove, tex
             </div>
           )}
 
-          {/* Text Input */}
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-400">Text Content</Label>
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Enter your text here..."
-              className="min-h-[80px] bg-[#1a1a1a] border-[#3a3a3a] text-white placeholder-gray-500"
-            />
-          </div>
-
           {/* Font Settings */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-white">Font</h3>
-
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-400">Font Family</Label>
-              <Select value={fontFamily} onValueChange={setFontFamily}>
-                <SelectTrigger className="bg-[#1a1a1a] border-[#3a3a3a] text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fontOptions.map((font) => (
-                    <SelectItem key={font} value={font}>
-                      {font}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                <Type className="h-3 w-3 text-white" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Typography</h3>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-400">Font Size ({fontSize[0]}px)</Label>
-              <Slider value={fontSize} onValueChange={setFontSize} min={12} max={120} step={1} className="w-full" />
-            </div>
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-300">Font Family</Label>
+                <Select value={fontFamily} onValueChange={setFontFamily}>
+                  <SelectTrigger className="bg-[#0f0f0f] border-[#3a3a3a] text-white rounded-lg focus:border-blue-500 transition-colors">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fontOptions.map((font) => (
+                      <SelectItem key={font} value={font}>
+                        {font}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Alignment Buttons */}
-            <div className="flex gap-1">
-              <Button variant="outline" size="sm" onClick={() => setAlignment("left")}>
-                <AlignLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setAlignment("center")}>
-                <AlignCenter className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setAlignment("right")}>
-                <AlignRight className="h-4 w-4" />
-              </Button>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-300">Font Size</Label>
+                  <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
+                    {fontSize[0]}px
+                  </div>
+                </div>
+                <Slider 
+                  value={fontSize} 
+                  onValueChange={setFontSize} 
+                  min={12} 
+                  max={120} 
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Alignment */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-300">Text Alignment</Label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setAlignment("left")}
+                    className={`flex-1 ${alignment === 'left' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                  >
+                    <AlignLeft className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setAlignment("center")}
+                    className={`flex-1 ${alignment === 'center' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                  >
+                    <AlignCenter className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setAlignment("right")}
+                    className={`flex-1 ${alignment === 'right' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                  >
+                    <AlignRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -149,18 +220,58 @@ export function TextPanel({ selectedClip, onTextLayerAdd, onTextLayerRemove, tex
 
           {/* Color Settings */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-white">Colors</h3>
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-400">Text Color</Label>
-              <Input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-6 h-6 bg-gray-600 rounded-md flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded-full"></div>
+              </div>
+              <h3 className="text-sm font-bold text-white">Colors</h3>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-400">Background Color</Label>
-              <Input type="color" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)} />
+            
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-300">Text Color</Label>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    type="color" 
+                    value={textColor} 
+                    onChange={(e) => setTextColor(e.target.value)} 
+                    className="w-16 h-10 rounded-lg border-[#3a3a3a] bg-[#0f0f0f] cursor-pointer"
+                  />
+                  <div className="flex-1 text-sm text-gray-400 font-mono bg-[#0f0f0f] border border-[#3a3a3a] rounded-lg px-3 py-2">
+                    {textColor}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-300">Background Color</Label>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    type="color" 
+                    value={backgroundColor} 
+                    onChange={(e) => setBackgroundColor(e.target.value)} 
+                    className="w-16 h-10 rounded-lg border-[#3a3a3a] bg-[#0f0f0f] cursor-pointer"
+                  />
+                  <div className="flex-1 text-sm text-gray-400 font-mono bg-[#0f0f0f] border border-[#3a3a3a] rounded-lg px-3 py-2">
+                    {backgroundColor}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </ScrollArea>
+      
+      {/* Add Button at Bottom */}
+      <div className="p-4 border-t border-[#3a3a3a]">
+        <Button
+          onClick={addTextLayer}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Type className="h-4 w-4 mr-2" />
+          Add Text Layer
+        </Button>
+      </div>
     </div>
   );
 }
