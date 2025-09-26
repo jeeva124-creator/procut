@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { TextOverlayEditor } from "@/components/text-overlay-editor"
+// import { TextOverlayEditor } from "@/components/text-overlay-editor"
 import { TransitionsPanel } from "@/components/transitions-panel"
 import {
   Palette,
@@ -525,9 +525,9 @@ export function ToolsPanel({ selectedClip }: ToolsPanelProps) {
               </Card>
             </TabsContent>
 
-            <TabsContent value="text" className="space-y-4">
+            {/* <TabsContent value="text" className="space-y-4">
               <TextOverlayEditor />
-            </TabsContent>
+            </TabsContent> */}
 
             <TabsContent value="transitions" className="space-y-4">
               <TransitionsPanel

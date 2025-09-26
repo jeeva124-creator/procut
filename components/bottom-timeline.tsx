@@ -29,7 +29,7 @@ interface BottomTimelineProps {
   onPlayPause: () => void
   selectedClip: string | null
   onClipSelect: (clipId: string | null) => void
-  setClips: (clips: Clip[]) => void
+  setClips: React.Dispatch<React.SetStateAction<Clip[]>>
   onTrimChange?: (clipId: string, trimStart: number, trimEnd: number) => void
   onVolumeChange?: (volume: number) => void
 }
@@ -48,7 +48,7 @@ export function BottomTimeline({
   onVolumeChange,
 }: BottomTimelineProps) {
   const [zoom, setZoom] = useState(1)
-  const [volume, setVolume] = useState([80])
+  const [volume, setVolume] = useState(80)
   const timelineRef = useRef<HTMLDivElement>(null)
   const draggingRef = useRef<{ id: string; offsetSec: number } | null>(null)
   const resizingRef = useRef<{ 
@@ -64,7 +64,7 @@ export function BottomTimeline({
 
   // Generate time markers
   const timeMarkers = []
-  const step = 0.02 // 20ms intervals
+  const step = 0.02
   for (let i = 0; i <= duration; i += step) {
     timeMarkers.push(i)
   }
@@ -78,7 +78,6 @@ export function BottomTimeline({
 
   const handleTimelineClick = (event: React.MouseEvent) => {
     if (!timelineRef.current) return
-
     const rect = timelineRef.current.getBoundingClientRect()
     const x = event.clientX - rect.left
     const percentage = x / rect.width
@@ -93,20 +92,16 @@ export function BottomTimeline({
         const clipData = JSON.parse(event.dataTransfer.getData("application/json"))
         const rect = timelineRef.current?.getBoundingClientRect()
         if (!rect) return
-
         const x = event.clientX - rect.left
         const percentage = x / rect.width
         const dropTime = percentage * duration
-
         const newClip = {
           ...clipData,
           startTime: dropTime,
           id: `timeline-${Date.now()}`,
-          // Ensure audio clips have proper trim values
           trimStart: clipData.trimStart || 0,
           trimEnd: clipData.trimEnd || clipData.duration || 10,
         }
-
         setClips((prevClips) => [...prevClips, newClip])
         console.log("[v0] Clip dropped on timeline:", newClip.name, "Type:", newClip.type, "Duration:", newClip.duration)
       } catch (error) {
@@ -116,7 +111,6 @@ export function BottomTimeline({
     [duration, setClips],
   )
 
-  // Drag to move clip handlers
   const onClipMouseDown = useCallback(
     (e: React.MouseEvent, clipId: string) => {
       e.stopPropagation()
@@ -144,42 +138,28 @@ export function BottomTimeline({
       const x = Math.min(Math.max(e.clientX, rect.left), rect.right) - rect.left
       const pixelsToSeconds = duration / rect.width
 
-      // Dragging
       if (draggingRef.current) {
         const { id, offsetSec } = draggingRef.current
         const newStart = Math.max(0, x * pixelsToSeconds - offsetSec)
         setClips((prev) => prev.map((c) => (c.id === id ? { ...c, startTime: Math.min(newStart, Math.max(0, duration - c.duration)) } : c)))
       }
 
-      // Trimming (resizing trim handles)
       if (resizingRef.current) {
-        console.log("[v0] Processing trim drag movement")
         const { id, side, startClientX, startTrimStart, startTrimEnd, originalDuration } = resizingRef.current
         const deltaPx = e.clientX - startClientX
         const deltaSec = deltaPx * pixelsToSeconds
-        const minTrimDuration = 0.1 // Minimum 0.1 seconds of video content
-        
+        const minTrimDuration = 0.1
         setClips((prev) => prev.map((clip) => {
           if (clip.id !== id) return clip
-          
           let updatedClip = clip
           if (side === "left") {
-            // Trim from the start - adjust trimStart
             const newTrimStart = Math.max(0, Math.min(startTrimStart + deltaSec, startTrimEnd - minTrimDuration))
-            console.log("[v0] Updating left trim:", newTrimStart)
             updatedClip = { ...clip, trimStart: newTrimStart }
           } else {
-            // Trim from the end - adjust trimEnd  
             const newTrimEnd = Math.min(originalDuration, Math.max(startTrimStart + minTrimDuration, startTrimEnd + deltaSec))
-            console.log("[v0] Updating right trim:", newTrimEnd)
             updatedClip = { ...clip, trimEnd: newTrimEnd }
           }
-          
-          // Notify parent of trim change
-          if (onTrimChange) {
-            onTrimChange(updatedClip.id, updatedClip.trimStart, updatedClip.trimEnd)
-          }
-          
+          if (onTrimChange) onTrimChange(updatedClip.id, updatedClip.trimStart, updatedClip.trimEnd)
           return updatedClip
         }))
       }
@@ -196,14 +176,9 @@ export function BottomTimeline({
 
   const onResizeHandleMouseDown = useCallback(
     (e: React.MouseEvent, clipId: string, side: "left" | "right") => {
-      console.log("[v0] Trim handle mousedown:", side, "for clip:", clipId)
       e.stopPropagation()
       const clip = clips.find((c) => c.id === clipId)
-      if (!clip) {
-        console.log("[v0] Clip not found for trimming:", clipId)
-        return
-      }
-      console.log("[v0] Starting trim operation:", { trimStart: clip.trimStart, trimEnd: clip.trimEnd })
+      if (!clip) return
       resizingRef.current = {
         id: clipId,
         side,
@@ -212,7 +187,7 @@ export function BottomTimeline({
         startDuration: clip.duration,
         startTrimStart: clip.trimStart,
         startTrimEnd: clip.trimEnd,
-        originalDuration: clip.duration, // Store the original video duration
+        originalDuration: clip.duration,
       }
       window.addEventListener("mousemove", onWindowMouseMove)
       window.addEventListener("mouseup", onWindowMouseUp)
@@ -220,7 +195,6 @@ export function BottomTimeline({
     [clips, onWindowMouseMove, onWindowMouseUp],
   )
 
-  // Split at playhead
   const splitClipAtPlayhead = useCallback(
     (clipId: string) => {
       const clip = clips.find((c) => c.id === clipId)
@@ -236,209 +210,193 @@ export function BottomTimeline({
   )
 
   return (
-    <div className="h-full flex flex-col bg-[#2a2a2a]">
-      {/* Timeline Controls */}
-      <div className="flex items-center justify-between p-4 border-b border-[#3a3a3a]">
-        {/* Playback Controls */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a]"
-            onClick={() => onTimeChange(Math.max(0, currentTime - 0.1))}
-          >
-            <SkipBack className="h-4 w-4" />
-          </Button>
-
-          <Button variant="ghost" size="icon" className="text-white hover:bg-[#3a3a3a] w-10 h-10" onClick={onPlayPause}>
-            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a]"
-            onClick={() => onTimeChange(Math.min(duration, currentTime + 0.1))}
-          >
-            <SkipForward className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Time Display */}
-        <div className="text-sm text-gray-300 font-mono">
-          {formatTime(currentTime)} / {formatTime(duration)}
-        </div>
-
-        {/* Right Controls */}
-        <div className="flex items-center gap-4">
-          {/* Volume */}
-          <div className="flex items-center gap-2">
-            <Volume2 className="h-4 w-4 text-gray-400" />
-            <div className="w-20">
-              <Slider 
-                value={volume} 
-                onValueChange={(newVolume) => {
-                  setVolume(newVolume)
-                  if (onVolumeChange) {
-                    onVolumeChange(newVolume[0])
-                  }
-                }} 
-                max={100} 
-                step={1} 
-                className="w-full" 
-              />
-            </div>
-          </div>
-
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
-              onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
-            >
-              <Minus className="h-3 w-3" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
-              onClick={() => setZoom(zoom + 0.1)}
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-
-            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8">
-              <Maximize2 className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline Area */}
-      <div className="flex-1 relative w-full min-w-0">
-        {/* Time Ruler */}
-        <div className="h-8 bg-[#1a1a1a] border-b border-[#3a3a3a] relative overflow-hidden">
-          {timeMarkers.map((time, index) => {
-            const isSecond = time % 1 === 0
-            const position = (time / duration) * 100
-
-            return (
-              <div key={index} className="absolute top-0 h-full" style={{ left: `${position}%` }}>
-                {isSecond && (
-                  <>
-                    <div className="w-px h-full bg-[#4a4a4a]" />
-                    <div className="absolute top-1 left-1 text-xs text-gray-400 font-mono">{formatTime(time)}</div>
-                  </>
-                )}
-                {!isSecond && time % 0.1 === 0 && <div className="w-px h-2 bg-[#3a3a3a]" />}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Timeline Track */}
-        <div
-          ref={timelineRef}
-          className="flex-1 bg-[#2a2a2a] relative cursor-pointer min-h-[120px] w-full overflow-hidden"
-          onClick={handleTimelineClick}
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
+  <div className="h-full flex flex-col bg-[#2a2a2a]">
+    <div className="flex items-center justify-between p-4 border-b border-[#3a3a3a]">
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-400 hover:text-white hover:bg-[#3a3a3a]"
+          onClick={() => onTimeChange(Math.max(0, currentTime - 0.1))}
         >
-          {/* Playhead */}
-          <div
-            className="absolute top-0 bottom-0 w-1 bg-red-500 z-30 pointer-events-none shadow-lg"
-            style={{ 
-              left: `${Math.min(100, Math.max(0, (currentTime / duration) * 100))}%`
-            }}
+          <SkipBack className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-white hover:bg-[#3a3a3a] w-10 h-10"
+          onClick={onPlayPause}
+        >
+          {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-400 hover:text-white hover:bg-[#3a3a3a]"
+          onClick={() => onTimeChange(Math.min(duration, currentTime + 0.1))}
+        >
+          <SkipForward className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="text-sm text-gray-300 font-mono">
+        {formatTime(currentTime)} / {formatTime(duration)}
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Volume2 className="h-4 w-4 text-gray-400" />
+          <div className="w-20">
+            <Slider
+              value={[volume]}
+              onValueChange={(newVolumeArray: number[]) => {
+                const newVolume = newVolumeArray[0];
+                setVolume(newVolume);
+                if (onVolumeChange) onVolumeChange(newVolume);
+              }}
+              max={100}
+              step={1}
+              className="w-full"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
+            onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
           >
-            <div className="absolute -top-3 -left-2 w-5 h-5 bg-red-500 rounded-full border-2 border-white shadow-lg" />
-            <div className="absolute -bottom-3 -left-2 w-5 h-5 bg-red-500 rounded-full border-2 border-white shadow-lg" />
-          </div>
-
-          {/* Audio Waveform Track */}
-          <div className="absolute top-4 left-0 right-0 h-16 bg-[#1a1a1a] border border-[#3a3a3a] mx-4 rounded">
-            <div className="flex items-center justify-center h-full">
-              <div className="w-16 h-12 bg-[#2a2a2a] rounded flex items-center justify-center">
-                <img src="/sample-video-clip.jpg" alt="Video clip" className="w-full h-full object-cover rounded" />
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Clips */}
-          {clips.map((clip) => {
-            // Show clip properly scaled to current timeline
-            const trimmedDuration = clip.trimEnd - clip.trimStart
-            const clipWidth = (trimmedDuration / duration) * 100
-            const clipLeft = (clip.startTime / duration) * 100
-
-            return (
-              <div
-                key={clip.id}
-                className={`absolute ${clip.type === "audio" ? "top-8" : "top-20"} h-12 ${
-                  clip.type === "audio" ? "bg-green-600" : "bg-blue-600"
-                } rounded border-2 ${
-                  selectedClip === clip.id ? "border-white" : "border-transparent"
-                } group relative overflow-hidden cursor-pointer`}
-                style={{
-                  left: `${clipLeft}%`,
-                  width: `${clipWidth}%`,
-                  minWidth: "60px",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClipSelect(clip.id)
-                }}
-                onMouseDown={(e) => onClipMouseDown(e, clip.id)}
-              >
-                <div className="p-2 text-xs text-white truncate select-none">{clip.name}</div>
-                
-                {/* Left trim handle */}
-                <div
-                  className="absolute left-0 top-0 h-full w-4 bg-yellow-400 cursor-col-resize hover:bg-yellow-300 transition-all z-20 border border-yellow-600"
-                  onMouseDown={(e) => {
-                    console.log("[v0] LEFT TRIM HANDLE CLICKED!")
-                    e.stopPropagation()
-                    e.preventDefault()
-                    onResizeHandleMouseDown(e, clip.id, "left")
-                  }}
-                  title="Drag to trim start"
-                  style={{ minWidth: '16px' }}
-                >
-                  <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-yellow-600 rounded opacity-80"></div>
-                </div>
-                {/* Right trim handle */}
-                <div
-                  className="absolute right-0 top-0 h-full w-4 bg-yellow-400 cursor-col-resize hover:bg-yellow-300 transition-all z-20 border border-yellow-600"
-                  onMouseDown={(e) => {
-                    console.log("[v0] RIGHT TRIM HANDLE CLICKED!")
-                    e.stopPropagation()
-                    e.preventDefault()
-                    onResizeHandleMouseDown(e, clip.id, "right")
-                  }}
-                  title="Drag to trim end"
-                  style={{ minWidth: '16px' }}
-                >
-                  <div className="absolute right-1 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-yellow-600 rounded opacity-80"></div>
-                </div>
-                {/* Split button */}
-                <button
-                  className="absolute -top-3 -right-3 bg-black/60 hover:bg-black text-white rounded-full p-1"
-                  title="Split at playhead"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    splitClipAtPlayhead(clip.id)
-                  }}
-                >
-                  <Scissors className="h-3 w-3" />
-                </button>
-              </div>
-            )
-          })}
+            <Minus className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
+            onClick={() => setZoom(zoom + 0.1)}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
+          >
+            <Maximize2 className="h-3 w-3" />
+          </Button>
         </div>
       </div>
     </div>
-  )
-}
+
+    <div className="flex-1 relative w-full min-w-0">
+      <div className="h-8 bg-[#1a1a1a] border-b border-[#3a3a3a] relative overflow-hidden">
+        {timeMarkers.map((time, index) => {
+          const isSecond = time % 1 === 0;
+          const position = (time / duration) * 100;
+          return (
+            <div key={index} className="absolute top-0 h-full" style={{ left: `${position}%` }}>
+              {isSecond && (
+                <>
+                  <div className="w-px h-full bg-[#4a4a4a]" />
+                  <div className="absolute top-1 left-1 text-xs text-gray-400 font-mono">
+                    {formatTime(time)}
+                  </div>
+                </>
+              )}
+              {!isSecond && time % 0.1 === 0 && <div className="w-px h-2 bg-[#3a3a3a]" />}
+            </div>
+          );
+        })}
+      </div>
+
+      <div
+        ref={timelineRef}
+        className="flex-1 bg-[#2a2a2a] relative cursor-pointer min-h-[120px] w-full overflow-hidden"
+        onClick={handleTimelineClick}
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+      >
+        <div
+          className="absolute top-0 bottom-0 w-1 bg-red-500 z-30 pointer-events-none shadow-lg"
+          style={{ left: `${Math.min(100, Math.max(0, (currentTime / duration) * 100))}%` }}
+        >
+          <div className="absolute -top-3 -left-2 w-5 h-5 bg-red-500 rounded-full border-2 border-white shadow-lg" />
+          <div className="absolute -bottom-3 -left-2 w-5 h-5 bg-red-500 rounded-full border-2 border-white shadow-lg" />
+        </div>
+
+        <div className="absolute top-4 left-0 right-0 h-16 bg-[#1a1a1a] border border-[#3a3a3a] mx-4 rounded">
+          <div className="flex items-center justify-center h-full">
+            <div className="w-16 h-12 bg-[#2a2a2a] rounded flex items-center justify-center">
+              <img
+                src="/sample-video-clip.jpg"
+                alt="Video clip"
+                className="w-full h-full object-cover rounded"
+              />
+            </div>
+          </div>
+        </div>
+
+        {clips.map((clip) => {
+          const trimmedDuration = clip.trimEnd - clip.trimStart;
+          const clipWidth = (trimmedDuration / duration) * 100;
+          const clipLeft = (clip.startTime / duration) * 100;
+          return (
+            <div
+              key={clip.id}
+              className={`absolute ${
+                clip.type === "audio" ? "top-8" : "top-20"
+              } h-12 ${
+                clip.type === "audio" ? "bg-green-600" : "bg-blue-600"
+              } rounded border-2 ${
+                selectedClip === clip.id ? "border-white" : "border-transparent"
+              } group relative overflow-hidden cursor-pointer`}
+              style={{ left: `${clipLeft}%`, width: `${clipWidth}%`, minWidth: "60px" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClipSelect(clip.id);
+              }}
+              onMouseDown={(e) => onClipMouseDown(e, clip.id)}
+            >
+              <div className="p-2 text-xs text-white truncate select-none">{clip.name}</div>
+
+              <div
+                className="absolute left-0 top-0 h-full w-4 bg-yellow-400 cursor-col-resize hover:bg-yellow-300 transition-all z-20 border border-yellow-600"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onResizeHandleMouseDown(e, clip.id, "left");
+                }}
+                title="Drag to trim start"
+                style={{ minWidth: "16px" }}
+              >
+                <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-yellow-600 rounded opacity-80"></div>
+              </div>
+
+              <div
+                className="absolute right-0 top-0 h-full w-4 bg-yellow-400 cursor-col-resize hover:bg-yellow-300 transition-all z-20 border border-yellow-600"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onResizeHandleMouseDown(e, clip.id, "right");
+                }}
+                title="Drag to trim end"
+                style={{ minWidth: "16px" }}
+              >
+                <div className="absolute right-1 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-yellow-600 rounded opacity-80"></div>
+              </div>
+
+              <button
+                className="absolute -top-3 -right-3 bg-black/60 hover:bg-black text-white rounded-full p-1"
+                title="Split at playhead"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  splitClipAtPlayhead(clip.id);
+                }}
+              >
+                <Scissors className="h-3 w-3" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+)}

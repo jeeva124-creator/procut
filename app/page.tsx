@@ -335,14 +335,23 @@ export default function VideoEditor() {
               setIsPlaying(!isPlaying)
             }}
             selectedClip={selectedClip}
-            onClipSelect={setSelectedClip}
+            onClipSelect={(clipId) => {
+              setSelectedClip(clipId);
+              const clip = clips.find((c) => c.id === clipId) || null;
+              setCurrentClip(clip);
+              if (clip) {
+                const trimmedDuration = clip.trimEnd - clip.trimStart;
+                setDuration(trimmedDuration);
+                setUsingTrimmedDuration(true);
+                console.log("[v0] Clip selected from timeline:", clip.name, "Trimmed duration:", trimmedDuration);
+              }
+            }}
             setClips={setClips}
             onTrimChange={(clipId, trimStart, trimEnd) => {
-              // Update duration if this is the currently selected clip
               if (clipId === selectedClip) {
-                const trimmedDuration = trimEnd - trimStart
-                setDuration(trimmedDuration)
-                setUsingTrimmedDuration(true)
+                const trimmedDuration = trimEnd - trimStart;
+                setDuration(trimmedDuration);
+                setUsingTrimmedDuration(true);
                 console.log("[v0] Updated duration due to trim change:", trimmedDuration)
               }
             }}
