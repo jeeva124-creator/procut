@@ -238,8 +238,7 @@ export default function VideoEditor() {
         );
       case "audio":
         return <AudioPanel selectedClip={selectedClip} />;
-      // case "images":
-      //   return <ImagesPanel clips={clips} setClips={setClips} />;
+      
       case "elements":
         return (
           <ElementsPanel

@@ -57,7 +57,16 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
   const [bitrate, setBitrate] = useState("5000")
   const [framerate, setFramerate] = useState("30")
   const [fileName, setFileName] = useState("my-video")
+  const [includeAudio, setIncludeAudio] = useState(true)
+  const [includeTextLayers, setIncludeTextLayers] = useState(true)
+  const [includeElements, setIncludeElements] = useState(true)
+  const [useExternalAudio, setUseExternalAudio] = useState(false)
+  const [externalAudioUrl, setExternalAudioUrl] = useState<string | null>(null)
+  const [videoAudioVolume, setVideoAudioVolume] = useState(100)
+  const [externalAudioVolume, setExternalAudioVolume] = useState(100)
+  const [externalAudioOffset, setExternalAudioOffset] = useState(0) // seconds, can be negative
   const [exportJobs, setExportJobs] = useState<ExportJob[]>([])
+  const [playbackBlocked, setPlaybackBlocked] = useState(false)
   let currentFrame = 0 // Declare currentFrame variable
   const frameDuration = 1 / Number.parseInt(framerate) // Declare frameDuration variable
 
@@ -199,46 +208,138 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
 
       const videoDuration = video.duration
 
-      let mimeType: string
-      let fileExtension: string
+      let selectedMimeType: string = ""
+      let fileExtension: string = ""
 
+      // Prefer WebAudio for capturing audio (works even if <video> is muted)
+      const fps = Number.parseInt(framerate)
+      const canvasStream = canvas.captureStream(fps)
+
+      // Attempt WebAudio first, and optionally mix external audio
+      let audioTracks: MediaStreamTrack[] = []
+      let audioContext: AudioContext | null = null
+      try {
+        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const destination = audioContext.createMediaStreamDestination()
+
+        // Primary video audio
+        const videoSource = audioContext.createMediaElementSource(video)
+        const videoGain = audioContext.createGain()
+        videoGain.gain.value = Math.max(0, Math.min(1, videoAudioVolume / 100))
+        video.muted = false
+        video.volume = 0 // avoid double playback to speakers
+        videoSource.connect(videoGain).connect(destination)
+
+        // Optional external audio
+        if (includeAudio && useExternalAudio && externalAudioUrl) {
+          const extAudio = new Audio()
+          extAudio.crossOrigin = "anonymous"
+          extAudio.src = externalAudioUrl
+          extAudio.preload = "auto"
+          // Offset handling: start the external element at offset when we start playing
+          // We'll set currentTime after metadata
+          await new Promise((resolve) => {
+            extAudio.onloadedmetadata = resolve
+            extAudio.onerror = resolve
+          })
+          try {
+            const targetTime = Math.max(0, externalAudioOffset)
+            if (!isNaN(targetTime)) {
+              extAudio.currentTime = targetTime
+            }
+          } catch {}
+          const extSource = audioContext.createMediaElementSource(extAudio)
+          const extGain = audioContext.createGain()
+          extGain.gain.value = Math.max(0, Math.min(1, externalAudioVolume / 100))
+          extSource.connect(extGain).connect(destination)
+          // Play external in sync once we start main playback
+          setTimeout(() => {
+            extAudio.play().catch(() => {})
+          }, 0)
+        }
+
+        audioTracks = destination.stream.getAudioTracks()
+      } catch (e) {
+        audioTracks = []
+      }
+
+      // Fallback to <video>.captureStream() audio if WebAudio failed
+      if (audioTracks.length === 0) {
+        try {
+          const elementCapture: any = (video as any).captureStream?.() || (video as any).mozCaptureStream?.()
+          if (elementCapture && typeof elementCapture.getAudioTracks === "function") {
+            // Ensure audio not silenced by element mute when using element capture
+            video.muted = false
+            video.volume = 0 // keep silent to user while preserving audio in track
+            audioTracks = elementCapture.getAudioTracks()
+          }
+        } catch (e) {
+          // leave audioTracks empty
+        }
+      }
+
+      const hasAudio = includeAudio && audioTracks.length > 0
+
+      // Decide MIME type now that we know if audio is available
       if (format === "mp4") {
-        // Try MP4 with different codec combinations
-        const mp4Options = [
-          "video/mp4;codecs=avc1.42E01E,mp4a.40.2", // H.264 Baseline + AAC
-          "video/mp4;codecs=avc1.64001E,mp4a.40.2", // H.264 High + AAC
-          "video/mp4;codecs=h264,aac", // Simple H.264 + AAC
-          "video/mp4", // Basic MP4
+        const mp4AudioOptions = [
+          "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+          "video/mp4;codecs=avc1.64001E,mp4a.40.2",
+          "video/mp4;codecs=h264,aac",
+          "video/mp4", // may or may not include audio
         ]
-
-        mimeType = mp4Options.find((type) => MediaRecorder.isTypeSupported(type)) || ""
+        const mp4VideoOnlyOptions = [
+          "video/mp4;codecs=h264",
+          "video/mp4",
+        ]
+        const candidates = hasAudio ? mp4AudioOptions : mp4VideoOnlyOptions
+        selectedMimeType = candidates.find((type) => MediaRecorder.isTypeSupported(type)) || ""
         fileExtension = "mp4"
 
-        if (!mimeType) {
-          console.warn("[v0] MP4 format not supported, falling back to WebM")
-          mimeType = "video/webm;codecs=vp9"
+        if (!selectedMimeType) {
+          console.warn("[v0] MP4 not supported; falling back to WebM")
+          // Prefer audio-capable WebM if we have audio
+          const webmAudioPreferred = [
+            "video/webm;codecs=vp9,opus",
+            "video/webm;codecs=vp8,opus",
+            "video/webm", // usually supports audio
+          ]
+          const webmVideoPreferred = [
+            "video/webm;codecs=vp9",
+            "video/webm;codecs=vp8",
+            "video/webm",
+          ]
+          const webmCandidates = hasAudio ? webmAudioPreferred : webmVideoPreferred
+          selectedMimeType = webmCandidates.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm"
           fileExtension = "webm"
         }
       } else {
-        // WebM format (default)
-        const webmOptions = [
+        // WebM default
+        const webmAudioPreferred = [
           "video/webm;codecs=vp9,opus",
-          "video/webm;codecs=vp9",
           "video/webm;codecs=vp8,opus",
+          "video/webm", // usually supports audio
+        ]
+        const webmVideoPreferred = [
+          "video/webm;codecs=vp9",
           "video/webm;codecs=vp8",
           "video/webm",
         ]
-
-        mimeType = webmOptions.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm"
+        const webmCandidates = hasAudio ? webmAudioPreferred : webmVideoPreferred
+        selectedMimeType = webmCandidates.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm"
         fileExtension = "webm"
       }
 
-      console.log(`[v0] Using MIME type: ${mimeType}`)
+      console.log(`[v0] Using MIME type: ${selectedMimeType} (audio: ${hasAudio})`)
 
-      // Setup MediaRecorder with dynamic format
-      const stream = canvas.captureStream(Number.parseInt(framerate))
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType,
+      // Merge canvas video track with audio track(s) if available
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...(includeAudio ? audioTracks : []),
+      ])
+
+      const mediaRecorder = new MediaRecorder(combinedStream, {
+        mimeType: selectedMimeType,
       })
 
       const chunks: Blob[] = []
@@ -249,7 +350,7 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
       }
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType })
+        const blob = new Blob(chunks, { type: selectedMimeType })
         const actualFileName = `${fileName}.${fileExtension}`
 
         // Update job as completed
@@ -277,33 +378,39 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
       }
 
       // Start recording
+      if (audioContext && includeAudio) {
+        await audioContext.resume()
+      }
       mediaRecorder.start()
       video.currentTime = 0
-      video.play()
+      try {
+        await video.play()
+        setPlaybackBlocked(false)
+      } catch (e) {
+        console.warn("[v0] Playback was blocked by the browser. Click anywhere and try again.")
+        setPlaybackBlocked(true)
+        // Fallback: attempt muted play to advance frames (audio may be missing until interaction)
+        try {
+          video.muted = true
+          await video.play()
+        } catch {}
+      }
 
-      // Render frames with transforms applied
-      const fps = Number.parseInt(framerate)
-      const totalFrames = Math.ceil(videoDuration * fps)
-
-      console.log(`[v0] Export settings - Duration: ${videoDuration}s, FPS: ${fps}, Total frames: ${totalFrames}`)
+      // Render frames with transforms applied based on real-time playback so audio stays in sync
+      console.log(`[v0] Export settings - Duration: ${videoDuration}s, FPS: ${fps}`)
 
       const renderFrame = () => {
-        if (currentFrame >= totalFrames) {
-          console.log(`[v0] Rendering complete - ${currentFrame} frames rendered`)
-          mediaRecorder.stop()
-          video.pause()
-          return
-        }
-
         // Clear canvas
         ctx.fillStyle = "#000000"
         ctx.fillRect(0, 0, width, height)
 
-        elements
-          .filter((el) => el.type === "overlay")
-          .forEach((element) => {
-            renderElement(ctx, element, width, height)
-          })
+        if (includeElements) {
+          elements
+            .filter((el) => el.type === "overlay")
+            .forEach((element) => {
+              renderElement(ctx, element, width, height)
+            })
+        }
 
         // Apply transforms and draw video
         ctx.save()
@@ -347,15 +454,6 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
           }
         }
 
-        const videoTime = Math.min(currentFrame * frameDuration, videoDuration - 0.1)
-
-        if (currentFrame % 30 === 0) {
-          // Log every 30 frames to avoid spam
-          console.log(`[v0] Frame ${currentFrame}/${totalFrames}, Video time: ${videoTime.toFixed(2)}s`)
-        }
-
-        video.currentTime = videoTime
-
         // Draw video centered
         ctx.drawImage(
           video,
@@ -367,34 +465,100 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
 
         ctx.restore()
 
-        elements
-          .filter((el) => el.type === "shape")
-          .forEach((element) => {
-            renderElement(ctx, element, width, height)
-          })
+        if (includeElements) {
+          elements
+            .filter((el) => el.type === "shape")
+            .forEach((element) => {
+              renderElement(ctx, element, width, height)
+            })
+        }
 
-        // Draw text layers
-        textLayers.forEach((textLayer) => {
+        // Draw text layers with styling
+        if (includeTextLayers) {
+          textLayers.forEach((textLayer) => {
+          const bold = (textLayer as any).bold ? "bold " : ""
+          const italic = (textLayer as any).italic ? "italic " : ""
+          const fontSize = textLayer.fontSize
+          const fontFamily = textLayer.fontFamily
+          ctx.font = `${italic}${bold}${fontSize}px ${fontFamily}`
+
+          // Background box
+          const bgColor = (textLayer as any).backgroundBoxColor as string | undefined
+          const bgPadding = Number((textLayer as any).backgroundBoxPadding ?? 6)
+
+          // Opacity
+          const textOpacity = Number((textLayer as any).opacity ?? 100)
+          const prevAlpha = ctx.globalAlpha
+          ctx.globalAlpha = Math.max(0, Math.min(1, textOpacity / 100))
+
+          // Shadow
+          const shadowColor = (textLayer as any).shadowColor as string | undefined
+          const shadowBlur = Number((textLayer as any).shadowBlur ?? 0)
+          if (shadowColor && shadowBlur > 0) {
+            ctx.shadowColor = shadowColor
+            ctx.shadowBlur = shadowBlur
+          } else {
+            ctx.shadowColor = "transparent"
+            ctx.shadowBlur = 0
+          }
+
+          const metrics = ctx.measureText(textLayer.text)
+          const textWidth = metrics.width
+          const textHeight = fontSize
+
+          const drawX = textLayer.x
+          const drawY = textLayer.y
+
+          if (bgColor) {
+            ctx.save()
+            ctx.shadowColor = "transparent"
+            ctx.fillStyle = bgColor
+            ctx.fillRect(
+              drawX - bgPadding,
+              drawY - textHeight - bgPadding,
+              textWidth + bgPadding * 2,
+              textHeight + bgPadding * 2,
+            )
+            ctx.restore()
+          }
+
+          // Stroke
+          const strokeColor = (textLayer as any).strokeColor as string | undefined
+          const strokeWidth = Number((textLayer as any).strokeWidth ?? 0)
+          if (strokeColor && strokeWidth > 0) {
+            ctx.strokeStyle = strokeColor
+            ctx.lineWidth = strokeWidth
+            ctx.strokeText(textLayer.text, drawX, drawY)
+          }
+
+          // Fill
           ctx.fillStyle = textLayer.color
-          ctx.font = `${textLayer.fontSize}px ${textLayer.fontFamily}`
-          ctx.fillText(textLayer.text, textLayer.x, textLayer.y)
-        })
+          ctx.fillText(textLayer.text, drawX, drawY)
 
-        // Update progress
-        const progress = (currentFrame / totalFrames) * 100
+          // Reset alpha
+          ctx.globalAlpha = prevAlpha
+        })
+        }
+
+        // Update progress using current playback time
+        const progress = (video.currentTime / videoDuration) * 100
         setExportProgress(progress)
         setExportJobs((jobs) => jobs.map((job) => (job.id === newJob.id ? { ...job, progress } : job)))
 
-        currentFrame++
+        if (video.ended || video.currentTime >= videoDuration - 0.05) {
+          console.log(`[v0] Rendering complete - realtime playback reached end`)
+          mediaRecorder.stop()
+          video.pause()
+          return
+        }
 
-        setTimeout(renderFrame, 1000 / fps)
+        requestAnimationFrame(renderFrame)
       }
 
-      video.currentTime = 0
-      // Wait a bit for the video to be ready, then start rendering
+      // Wait a tick, then start rendering loop
       setTimeout(() => {
         console.log(`[v0] Starting frame rendering...`)
-        renderFrame()
+        requestAnimationFrame(renderFrame)
       }, 100)
     } catch (error) {
       console.error("[v0] Export error:", error)
@@ -536,6 +700,121 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
                   </div>
                 </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="include-audio"
+                    type="checkbox"
+                    checked={includeAudio}
+                    onChange={(e) => setIncludeAudio(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="include-audio">Include Audio</Label>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {includeAudio ? "Audio from the clip will be embedded." : "Exporting without audio."}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="include-elements"
+                    type="checkbox"
+                    checked={includeElements}
+                    onChange={(e) => setIncludeElements(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="include-elements">Include Shapes/Overlays</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="include-text"
+                    type="checkbox"
+                    checked={includeTextLayers}
+                    onChange={(e) => setIncludeTextLayers(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="include-text">Include Text Layers</Label>
+                </div>
+              </div>
+
+              {includeAudio && (
+                <div className="space-y-4 mt-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="use-external-audio"
+                      type="checkbox"
+                      checked={useExternalAudio}
+                      onChange={(e) => setUseExternalAudio(e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="use-external-audio">Use External Audio</Label>
+                  </div>
+
+                  {useExternalAudio && (
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="external-audio">Audio File</Label>
+                        <input
+                          id="external-audio"
+                          type="file"
+                          accept="audio/*"
+                          className="mt-1"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              if (externalAudioUrl) URL.revokeObjectURL(externalAudioUrl)
+                              const url = URL.createObjectURL(file)
+                              setExternalAudioUrl(url)
+                            } else {
+                              if (externalAudioUrl) URL.revokeObjectURL(externalAudioUrl)
+                              setExternalAudioUrl(null)
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Video Audio Volume</Label>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={videoAudioVolume}
+                            onChange={(e) => setVideoAudioVolume(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <Label>External Audio Volume</Label>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={externalAudioVolume}
+                            onChange={(e) => setExternalAudioVolume(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>External Audio Offset (sec)</Label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={externalAudioOffset}
+                          onChange={(e) => setExternalAudioOffset(Number(e.target.value))}
+                          className="mt-1 w-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-blue-500" />
@@ -545,10 +824,13 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
                   <p className="text-xs text-muted-foreground mt-1">
                     Export will use the full duration of your uploaded video
                   </p>
-                  {elements.length > 0 && (
+                  {elements.length > 0 && includeElements && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Including {elements.length} element{elements.length !== 1 ? "s" : ""} (shapes and overlays)
                     </p>
+                  )}
+                  {!includeElements && (
+                    <p className="text-xs text-muted-foreground mt-1">Shapes and overlays are disabled.</p>
                   )}
                 </div>
               </div>
@@ -575,6 +857,7 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-purple-500" />
                   <div>
+                    
                     <div className="font-medium">{getVideoDuration()}</div>
                     <div className="text-muted-foreground">Duration</div>
                   </div>
@@ -615,6 +898,11 @@ export function ExportPanel({ clips, currentClip, transform, textLayers, element
               >
                 {isExporting ? "Exporting..." : "Start Export"}
               </Button>
+              {playbackBlocked && (
+                <div className="text-xs text-red-500 self-center">
+                  Click anywhere in the page, then try export again (audio blocked).
+                </div>
+              )}
             </div>
 
             {!currentClip && (

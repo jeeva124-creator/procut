@@ -326,7 +326,7 @@ export function BottomTimeline({
           <div className="flex items-center justify-center h-full">
             <div className="w-16 h-12 bg-[#2a2a2a] rounded flex items-center justify-center">
               <img
-                src=""
+                src="sample-video-clip.jpg"
                 alt="Video clip"
                 className="w-full h-full object-cover rounded"
               />

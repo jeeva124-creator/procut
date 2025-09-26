@@ -26,6 +26,15 @@ interface TextLayer {
   fontSize: number;
   color: string;
   fontFamily: string;
+  bold?: boolean;
+  italic?: boolean;
+  opacity?: number; // 0-100
+  strokeColor?: string;
+  strokeWidth?: number;
+  shadowColor?: string;
+  shadowBlur?: number;
+  backgroundBoxColor?: string;
+  backgroundBoxPadding?: number;
 }
 
 export function TextPanel({ 
@@ -41,6 +50,15 @@ export function TextPanel({
   const [textColor, setTextColor] = useState("#f51515ff");
   const [backgroundColor, setBackgroundColor] = useState("#000000");
   const [alignment, setAlignment] = useState("center");
+  const [bold, setBold] = useState(false);
+  const [italic, setItalic] = useState(false);
+  const [opacity, setOpacity] = useState([100]);
+  const [strokeColor, setStrokeColor] = useState("#000000");
+  const [strokeWidth, setStrokeWidth] = useState([0]);
+  const [shadowColor, setShadowColor] = useState("#000000");
+  const [shadowBlur, setShadowBlur] = useState([0]);
+  const [backgroundBoxColor, setBackgroundBoxColor] = useState<string | undefined>(undefined);
+  const [backgroundBoxPadding, setBackgroundBoxPadding] = useState([6]);
 
   const fontOptions = [
     "Arial", "Helvetica", "Times New Roman", "Georgia", "Verdana",
@@ -57,6 +75,15 @@ export function TextPanel({
       fontSize: fontSize[0],
       color: textColor,
       fontFamily,
+      bold,
+      italic,
+      opacity: opacity[0],
+      strokeColor,
+      strokeWidth: strokeWidth[0],
+      shadowColor,
+      shadowBlur: shadowBlur[0],
+      backgroundBoxColor,
+      backgroundBoxPadding: backgroundBoxPadding[0],
     };
     onTextLayerAdd?.(newTextLayer); // ✅ send to parent
     setText(""); // clear input
@@ -183,6 +210,26 @@ export function TextPanel({
                 />
               </div>
 
+              {/* Weight / Style */}
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setBold(!bold)}
+                  className={`${bold ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                >
+                  Bold
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setItalic(!italic)}
+                  className={`${italic ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                >
+                  Italic
+                </Button>
+              </div>
+
               {/* Alignment */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium text-gray-300">Text Alignment</Label>
@@ -254,6 +301,93 @@ export function TextPanel({
                   />
                   <div className="flex-1 text-sm text-gray-400 font-mono bg-[#0f0f0f] border border-[#3a3a3a] rounded-lg px-3 py-2">
                     {backgroundColor}
+                  </div>
+                </div>
+              </div>
+
+              {/* Opacity */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-300">Opacity</Label>
+                  <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium">
+                    {opacity[0]}%
+                  </div>
+                </div>
+                <Slider 
+                  value={opacity}
+                  onValueChange={setOpacity}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Stroke */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-300">Stroke</Label>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    type="color" 
+                    value={strokeColor} 
+                    onChange={(e) => setStrokeColor(e.target.value)} 
+                    className="w-16 h-10 rounded-lg border-[#3a3a3a] bg-[#0f0f0f] cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <Slider 
+                      value={strokeWidth}
+                      onValueChange={setStrokeWidth}
+                      min={0}
+                      max={10}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Shadow */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-300">Shadow</Label>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    type="color" 
+                    value={shadowColor} 
+                    onChange={(e) => setShadowColor(e.target.value)} 
+                    className="w-16 h-10 rounded-lg border-[#3a3a3a] bg-[#0f0f0f] cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <Slider 
+                      value={shadowBlur}
+                      onValueChange={setShadowBlur}
+                      min={0}
+                      max={30}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Text Background Box */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-300">Text Background Box</Label>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    type="color" 
+                    value={backgroundBoxColor ?? '#000000'} 
+                    onChange={(e) => setBackgroundBoxColor(e.target.value)} 
+                    className="w-16 h-10 rounded-lg border-[#3a3a3a] bg-[#0f0f0f] cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <Slider 
+                      value={backgroundBoxPadding}
+                      onValueChange={setBackgroundBoxPadding}
+                      min={0}
+                      max={32}
+                      step={1}
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </div>
