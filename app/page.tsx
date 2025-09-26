@@ -93,16 +93,16 @@ export default function VideoEditor() {
   }, [])
 
   const [clips, setClips] = useState<Clip[]>([
-    {
-      id: "1",
-      name: "04-1.webm",
-      duration: 2,
-      startTime: 0,
-      type: "video",
-      thumbnail: "/sample-video-clip.jpg",
-      trimStart: 0,
-      trimEnd: 2,
-    },
+    // {
+    //   id: "1",
+    //   name: "04-1.webm",
+    //   duration: 2,
+    //   startTime: 0,
+    //   type: "video",
+    //   thumbnail: "",
+    //   trimStart: 0,
+    //   trimEnd: 2,
+    // },
   ]);
 
   const [transform, setTransform] = useState<VideoTransform>({

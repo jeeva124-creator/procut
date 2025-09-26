@@ -41,7 +41,7 @@ export function VideosPanel({ clips, setClips, onClipRemove }: VideosPanelProps)
         duration: Math.random() * 30 + 5,
         startTime: 0,
         type: "video",
-        thumbnail: "/sample-video-clip.jpg",
+        thumbnail: "",
       }
       setClips([...clips, newClip])
     })
