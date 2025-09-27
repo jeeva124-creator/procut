@@ -212,27 +212,27 @@ export function BottomTimeline({
   return (
   <div className="h-full flex flex-col bg-[#2a2a2a]">
     <div className="flex items-center justify-between p-4 border-b border-[#3a3a3a]">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="text-gray-400 hover:text-white hover:bg-[#3a3a3a]"
+          className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500"
           onClick={() => onTimeChange(Math.max(0, currentTime - 0.1))}
         >
           <SkipBack className="h-4 w-4" />
         </Button>
         <Button
-          variant="ghost"
+          variant="default"
           size="icon"
-          className="text-white hover:bg-[#3a3a3a] w-10 h-10"
+          className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white shadow-lg hover:shadow-xl"
           onClick={onPlayPause}
         >
           {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </Button>
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="text-gray-400 hover:text-white hover:bg-[#3a3a3a]"
+          className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500"
           onClick={() => onTimeChange(Math.min(duration, currentTime + 0.1))}
         >
           <SkipForward className="h-4 w-4" />
@@ -258,27 +258,27 @@ export function BottomTimeline({
             />
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
+            className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500 w-9 h-9"
             onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
           >
             <Minus className="h-3 w-3" />
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
+            className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500 w-9 h-9"
             onClick={() => setZoom(zoom + 0.1)}
           >
             <Plus className="h-3 w-3" />
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="text-gray-400 hover:text-white hover:bg-[#3a3a3a] w-8 h-8"
+            className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500 w-9 h-9"
           >
             <Maximize2 className="h-3 w-3" />
           </Button>
@@ -309,11 +309,12 @@ export function BottomTimeline({
 
       <div
         ref={timelineRef}
-        className="flex-1 bg-[#2a2a2a] relative cursor-pointer min-h-[120px] w-full overflow-hidden"
+        className="flex-1 bg-[#2a2a2a] relative cursor-pointer min-h-[160px] w-full overflow-hidden"
         onClick={handleTimelineClick}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
+        {/* Playhead */}
         <div
           className="absolute top-0 bottom-0 w-1 bg-red-500 z-30 pointer-events-none shadow-lg"
           style={{ left: `${Math.min(100, Math.max(0, (currentTime / duration) * 100))}%` }}
@@ -322,39 +323,32 @@ export function BottomTimeline({
           <div className="absolute -bottom-3 -left-2 w-5 h-5 bg-red-500 rounded-full border-2 border-white shadow-lg" />
         </div>
 
-        <div className="absolute top-4 left-0 right-0 h-16 bg-[#1a1a1a] border border-[#3a3a3a] mx-4 rounded">
-          <div className="flex items-center justify-center h-full">
-            <div className="w-16 h-12 bg-[#2a2a2a] rounded flex items-center justify-center">
-              <img
-                src="sample-video-clip.jpg"
-                alt="Video clip"
-                className="w-full h-full object-cover rounded"
-              />
+        {/* Video Track */}
+        <div className="absolute top-2 left-0 right-0 h-16 bg-[#1a1a1a] border border-[#3a3a3a] mx-4 rounded">
+          <div className="flex items-center px-2 h-full">
+            <div className="w-12 h-8 bg-[#2a2a2a] rounded flex items-center justify-center mr-2">
+              <span className="text-xs text-gray-400">V</span>
             </div>
-          </div>
-        </div>
-
-        {clips.map((clip) => {
-          const trimmedDuration = clip.trimEnd - clip.trimStart;
-          const clipWidth = (trimmedDuration / duration) * 100;
-          const clipLeft = (clip.startTime / duration) * 100;
-          return (
-            <div
-              key={clip.id}
-              className={`absolute ${
-                clip.type === "audio" ? "top-8" : "top-20"
-              } h-12 ${
-                clip.type === "audio" ? "bg-green-600" : "bg-blue-600"
-              } rounded border-2 ${
-                selectedClip === clip.id ? "border-white" : "border-transparent"
-              } group relative overflow-hidden cursor-pointer`}
-              style={{ left: `${clipLeft}%`, width: `${clipWidth}%`, minWidth: "60px" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClipSelect(clip.id);
-              }}
-              onMouseDown={(e) => onClipMouseDown(e, clip.id)}
-            >
+            <div className="flex-1 h-full relative">
+              {clips
+                .filter((clip) => clip.type === "video" || clip.type === "image")
+                .map((clip) => {
+                  const trimmedDuration = clip.trimEnd - clip.trimStart;
+                  const clipWidth = (trimmedDuration / duration) * 100;
+                  const clipLeft = (clip.startTime / duration) * 100;
+                  return (
+                    <div
+                      key={clip.id}
+                      className={`absolute top-1 h-10 bg-blue-600 rounded border-2 ${
+                        selectedClip === clip.id ? "border-white" : "border-transparent"
+                      } group relative overflow-hidden cursor-pointer`}
+                      style={{ left: `${clipLeft}%`, width: `${clipWidth}%`, minWidth: "60px" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClipSelect(clip.id);
+                      }}
+                      onMouseDown={(e) => onClipMouseDown(e, clip.id)}
+                    >
               <div className="p-2 text-xs text-white truncate select-none">{clip.name}</div>
 
               <div
@@ -393,9 +387,83 @@ export function BottomTimeline({
               >
                 <Scissors className="h-3 w-3" />
               </button>
+                    </div>
+                  );
+                })}
             </div>
-          );
-        })}
+          </div>
+        </div>
+
+        {/* Audio Track */}
+        <div className="absolute top-20 left-0 right-0 h-16 bg-[#1a1a1a] border border-[#3a3a3a] mx-4 rounded">
+          <div className="flex items-center px-2 h-full">
+            <div className="w-12 h-8 bg-[#2a2a2a] rounded flex items-center justify-center mr-2">
+              <span className="text-xs text-gray-400">A</span>
+            </div>
+            <div className="flex-1 h-full relative">
+              {clips
+                .filter((clip) => clip.type === "audio")
+                .map((clip) => {
+                  const trimmedDuration = clip.trimEnd - clip.trimStart;
+                  const clipWidth = (trimmedDuration / duration) * 100;
+                  const clipLeft = (clip.startTime / duration) * 100;
+                  return (
+                    <div
+                      key={clip.id}
+                      className={`absolute top-1 h-10 bg-green-600 rounded border-2 ${
+                        selectedClip === clip.id ? "border-white" : "border-transparent"
+                      } group relative overflow-hidden cursor-pointer`}
+                      style={{ left: `${clipLeft}%`, width: `${clipWidth}%`, minWidth: "60px" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClipSelect(clip.id);
+                      }}
+                      onMouseDown={(e) => onClipMouseDown(e, clip.id)}
+                    >
+                      <div className="p-2 text-xs text-white truncate select-none">{clip.name}</div>
+
+                      <div
+                        className="absolute left-0 top-0 h-full w-4 bg-yellow-400 cursor-col-resize hover:bg-yellow-300 transition-all z-20 border border-yellow-600"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onResizeHandleMouseDown(e, clip.id, "left");
+                        }}
+                        title="Drag to trim start"
+                        style={{ minWidth: "16px" }}
+                      >
+                        <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-yellow-600 rounded opacity-80"></div>
+                      </div>
+
+                      <div
+                        className="absolute right-0 top-0 h-full w-4 bg-yellow-400 cursor-col-resize hover:bg-yellow-300 transition-all z-20 border border-yellow-600"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onResizeHandleMouseDown(e, clip.id, "right");
+                        }}
+                        title="Drag to trim end"
+                        style={{ minWidth: "16px" }}
+                      >
+                        <div className="absolute right-1 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-yellow-600 rounded opacity-80"></div>
+                      </div>
+
+                      <button
+                        className="absolute -top-3 -right-3 bg-black/60 hover:bg-black text-white rounded-full p-1"
+                        title="Split at playhead"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          splitClipAtPlayhead(clip.id);
+                        }}
+                      >
+                        <Scissors className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -16,10 +16,13 @@ import {
   AudioWaveform as Waveform,
   Music,
   Mic,
+  X,
 } from "lucide-react"
 
 interface AudioPanelProps {
   selectedClip: string | null
+  clips: any[]
+  setClips: React.Dispatch<React.SetStateAction<any[]>>
 }
 
 interface AudioTrack {
@@ -30,21 +33,22 @@ interface AudioTrack {
   url: string
 }
 
-export function AudioPanel({ selectedClip }: AudioPanelProps) {
+export function AudioPanel({ selectedClip, clips, setClips }: AudioPanelProps) {
   const [volume, setVolume] = useState([80])
   const [isMuted, setIsMuted] = useState(false)
   const [fadeIn, setFadeIn] = useState([0])
   const [fadeOut, setFadeOut] = useState([0])
-  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([])
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null)
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Filter audio clips from the main clips array
+  const audioTracks = clips.filter(clip => clip.type === "audio")
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files) return
 
-    const uploadedTracks: AudioTrack[] = []
     Array.from(files).forEach((file, index) => {
       const url = URL.createObjectURL(file)
 
@@ -57,14 +61,18 @@ export function AudioPanel({ selectedClip }: AudioPanelProps) {
           file.name.toLowerCase().includes("voice") ? "voice" :
           file.name.toLowerCase().includes("sfx") ? "sfx" : "music"
 
-        setAudioTracks((prev) => [
+        // Add to main clips array
+        setClips((prev) => [
           ...prev,
           {
             id: `${Date.now()}-${index}`,
             name: file.name,
             duration,
-            type,
+            type: "audio", // This is the key - must be "audio" for timeline
             url,
+            startTime: 0,
+            trimStart: 0,
+            trimEnd: duration
           },
         ])
       })
@@ -72,7 +80,7 @@ export function AudioPanel({ selectedClip }: AudioPanelProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a1a]">
+    <div className="h-full flex flex-col bg-[#1a1a1a] min-h-0">
       {/* Header */}
       <div className="p-4 border-b border-[#3a3a3a] bg-[#2a2a2a]">
         <div className="flex items-center gap-3 mb-2">
@@ -94,7 +102,7 @@ export function AudioPanel({ selectedClip }: AudioPanelProps) {
         />
       </div>
 
-      <ScrollArea className="flex-1 p-6">
+      <ScrollArea className="flex-1 p-6 min-h-0 overflow-auto">
         <div className="space-y-8">
           {/* Audio Controls */}
           <div className="space-y-4">
@@ -224,49 +232,73 @@ export function AudioPanel({ selectedClip }: AudioPanelProps) {
         </span>
       </div>
     </div>
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-10 w-10 p-0 text-gray-400 hover:text-white hover:bg-blue-600 flex-shrink-0 rounded-lg transition-all group-hover:opacity-100 opacity-80"
-      onClick={(e) => {
-        e.stopPropagation(); // prevent parent click
-        
-        if (playingAudioId === track.id) {
-          // Stop currently playing audio
-          if (currentAudio) {
-            currentAudio.pause()
-            currentAudio.currentTime = 0
-          }
-          setPlayingAudioId(null)
-          setCurrentAudio(null)
-        } else {
-          // Stop any other playing audio first
-          if (currentAudio) {
-            currentAudio.pause()
-            currentAudio.currentTime = 0
-          }
+    <div className="flex items-center gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-10 w-10 p-0 text-gray-400 hover:text-white hover:bg-blue-600 flex-shrink-0 rounded-md transition-all group-hover:opacity-100 opacity-80"
+        onClick={(e) => {
+          e.stopPropagation(); // prevent parent click
           
-          // Start new audio
-          const audio = new Audio(track.url)
-          audio.volume = isMuted ? 0 : volume[0] / 100
-          
-          audio.addEventListener("ended", () => {
+          if (playingAudioId === track.id) {
+            // Stop currently playing audio
+            if (currentAudio) {
+              currentAudio.pause()
+              currentAudio.currentTime = 0
+            }
             setPlayingAudioId(null)
             setCurrentAudio(null)
-          })
-          
-          audio.play()
-          setPlayingAudioId(track.id)
-          setCurrentAudio(audio)
-        }
-      }}
-    >
-      {playingAudioId === track.id ? (
-        <Pause className="h-5 w-5" />
-      ) : (
-        <Play className="h-5 w-5" />
-      )}
-    </Button>
+          } else {
+            // Stop any other playing audio first
+            if (currentAudio) {
+              currentAudio.pause()
+              currentAudio.currentTime = 0
+            }
+            
+            // Start new audio
+            const audio = new Audio(track.url)
+            audio.volume = isMuted ? 0 : volume[0] / 100
+            
+            audio.addEventListener("ended", () => {
+              setPlayingAudioId(null)
+              setCurrentAudio(null)
+            })
+            
+            audio.play()
+            setPlayingAudioId(track.id)
+            setCurrentAudio(audio)
+          }
+        }}
+      >
+        {playingAudioId === track.id ? (
+          <Pause className="h-5 w-5" />
+        ) : (
+          <Play className="h-5 w-5" />
+        )}
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-10 w-10 p-0 text-gray-400 hover:text-white hover:bg-red-600 flex-shrink-0 rounded-md transition-all group-hover:opacity-100 opacity-80"
+        onClick={(e) => {
+          e.stopPropagation(); // prevent parent click
+          // Stop playing audio if this track is currently playing
+          if (playingAudioId === track.id) {
+            if (currentAudio) {
+              currentAudio.pause()
+              currentAudio.currentTime = 0
+            }
+            setPlayingAudioId(null)
+            setCurrentAudio(null)
+          }
+          // Delete the track from main clips array
+          setClips(prev => prev.filter(clip => clip.id !== track.id))
+        }}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
 
   </div>
 ))}

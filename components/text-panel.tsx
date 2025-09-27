@@ -90,7 +90,7 @@ export function TextPanel({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a1a]">
+    <div className="h-full flex flex-col bg-[#1a1a1a] min-h-0">
       {/* Header */}
       <div className="p-4 border-b border-[#3a3a3a] bg-[#2a2a2a]">
         <div className="flex items-center gap-3 mb-2">
@@ -104,8 +104,8 @@ export function TextPanel({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-6">
-        <div className="space-y-8">
+      <ScrollArea className="flex-1 p-6 min-h-0 overflow-auto">
+        <div className="space-y-8 pb-4">
 
           {/* Text Input Section */}
           <div className="space-y-4">
@@ -216,7 +216,7 @@ export function TextPanel({
                   variant="outline" 
                   size="sm" 
                   onClick={() => setBold(!bold)}
-                  className={`${bold ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                  className={`${bold ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white border-gray-500 shadow-lg' : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500'}`}
                 >
                   Bold
                 </Button>
@@ -224,7 +224,7 @@ export function TextPanel({
                   variant="outline" 
                   size="sm" 
                   onClick={() => setItalic(!italic)}
-                  className={`${italic ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                  className={`${italic ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white border-gray-500 shadow-lg' : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500'}`}
                 >
                   Italic
                 </Button>
@@ -238,7 +238,7 @@ export function TextPanel({
                     variant="outline" 
                     size="sm" 
                     onClick={() => setAlignment("left")}
-                    className={`flex-1 ${alignment === 'left' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                    className={`flex-1 ${alignment === 'left' ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white border-gray-500 shadow-lg' : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500'}`}
                   >
                     <AlignLeft className="h-4 w-4" />
                   </Button>
@@ -246,7 +246,7 @@ export function TextPanel({
                     variant="outline" 
                     size="sm" 
                     onClick={() => setAlignment("center")}
-                    className={`flex-1 ${alignment === 'center' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                    className={`flex-1 ${alignment === 'center' ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white border-gray-500 shadow-lg' : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500'}`}
                   >
                     <AlignCenter className="h-4 w-4" />
                   </Button>
@@ -254,7 +254,7 @@ export function TextPanel({
                     variant="outline" 
                     size="sm" 
                     onClick={() => setAlignment("right")}
-                    className={`flex-1 ${alignment === 'right' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-[#2a2a2a]'}`}
+                    className={`flex-1 ${alignment === 'right' ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white border-gray-500 shadow-lg' : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white hover:border-gray-500'}`}
                   >
                     <AlignRight className="h-4 w-4" />
                   </Button>
@@ -400,7 +400,7 @@ export function TextPanel({
       <div className="p-4 border-t border-[#3a3a3a]">
         <Button
           onClick={addTextLayer}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-lg hover:shadow-xl"
         >
           <Type className="h-4 w-4 mr-2" />
           Add Text Layer

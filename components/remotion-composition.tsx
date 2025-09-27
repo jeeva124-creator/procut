@@ -151,7 +151,7 @@ export function VideoComposition({
               {isImage ? (
                 <Img src={clip.src} style={getVideoStyle(clip)} />
               ) : (
-                <Video src={clip.src} style={getVideoStyle(clip)} muted />
+                <Video src={clip.src} style={getVideoStyle(clip)} />
               )}
             </Sequence>
           )

@@ -50,7 +50,7 @@ export function TransitionsPanel({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-200">Transitions</h3>
-        <Button size="sm" onClick={handleAddTransition} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button size="sm" onClick={handleAddTransition} className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white shadow-lg hover:shadow-xl">
           Add Transition
         </Button>
       </div>

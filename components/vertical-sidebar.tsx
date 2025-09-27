@@ -36,7 +36,7 @@ export function VerticalSidebar({ activePanel, setActivePanel }: VerticalSidebar
               <Button
                 variant="ghost"
                 size="icon"
-                className={`w-12 h-12 rounded-lg ${
+                className={`w-12 h-12 rounded-md ${
                   activePanel === tool.id
                     ? "bg-[#3a3a3a] text-white"
                     : "hover:bg-[#2a2a2a] text-gray-400 hover:text-white"

@@ -151,6 +151,24 @@ export default function VideoEditor() {
     }
   };
 
+  // Auto-select video clip when available
+  useEffect(() => {
+    const videoClips = clips.filter(clip => clip.type === "video");
+    const audioClips = clips.filter(clip => clip.type === "audio");
+    
+    // If we have video clips and no current video clip selected, auto-select the first video
+    if (videoClips.length > 0 && (!currentClip || currentClip.type !== "video")) {
+      console.log("[v0] Auto-selecting video clip - video clips available:", videoClips.length, "audio clips:", audioClips.length);
+      const videoClip = videoClips[0]; // Select the first video clip
+      handleClipSelect(videoClip);
+    }
+    // If we only have audio clips and no current clip, select the first audio
+    else if (audioClips.length > 0 && !currentClip) {
+      console.log("[v0] Auto-selecting audio clip - no video available");
+      handleClipSelect(audioClips[0]);
+    }
+  }, [clips, currentClip, handleClipSelect]);
+
   const handleTextLayerAdd = (textLayer: TextLayer) => {
     setTextLayers((prev) => [...prev, textLayer]);
   };
@@ -171,6 +189,12 @@ export default function VideoEditor() {
 
   const handleTextLayerRemove = (id: string) => {
     setTextLayers((prev) => prev.filter((layer) => layer.id !== id));
+  };
+
+  const handleTextLayerUpdate = (id: string, updates: Partial<TextLayer>) => {
+    setTextLayers((prev) =>
+      prev.map((layer) => (layer.id === id ? { ...layer, ...updates } : layer))
+    );
   };
 
   const handleClipRemove = (id: string) => {
@@ -199,6 +223,7 @@ export default function VideoEditor() {
     setTimeSettings(settings);
     console.log("[v0] Time settings updated in main app:", settings);
   };
+
 
   const renderSidePanel = () => {
     switch (activePanel) {
@@ -237,7 +262,7 @@ export default function VideoEditor() {
           />
         );
       case "audio":
-        return <AudioPanel selectedClip={selectedClip} />;
+        return <AudioPanel selectedClip={selectedClip} clips={clips} setClips={setClips} />;
       
       case "elements":
         return (
@@ -290,6 +315,8 @@ export default function VideoEditor() {
             transform={transform}
             textLayers={textLayers}
             elements={elements}
+            isPlaying={isPlaying}
+            onPlayPause={(playing) => setIsPlaying(playing)}
           />
         </div>
 
@@ -298,6 +325,7 @@ export default function VideoEditor() {
           <PreviewWindow
             isPlaying={isPlaying}
             currentTime={currentTime}
+            duration={duration}
             onTimeUpdate={setCurrentTime}
             onDurationUpdate={(newDuration) => {
               // Only update duration if we're not using a trimmed duration
@@ -315,6 +343,7 @@ export default function VideoEditor() {
             textLayers={textLayers}
             elements={elements}
             onElementUpdate={handleElementUpdate}
+            onTextLayerUpdate={handleTextLayerUpdate}
             videoAdjustments={videoAdjustments}
             playbackSpeed={playbackSpeed}
             volume={volume}

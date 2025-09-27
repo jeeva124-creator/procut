@@ -98,7 +98,7 @@ export function ElementsPanel({
   const selectedElementData = elements.find((el) => el.id === selectedElement)
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a1a]">
+    <div className="h-full flex flex-col bg-[#1a1a1a] min-h-0">
       {/* Header */}
       <div className="p-4 border-b border-[#3a3a3a] bg-[#2a2a2a]">
         <div className="flex items-center gap-3 mb-2">
@@ -112,8 +112,8 @@ export function ElementsPanel({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-6">
-        <div className="space-y-8">
+      <ScrollArea className="flex-1 p-6 min-h-0 overflow-auto">
+        <div className="space-y-8 pb-4">
           {/* Shapes */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
@@ -127,7 +127,7 @@ export function ElementsPanel({
                 <Button
                   key={shape.name}
                   variant="outline"
-                  className="aspect-square bg-[#0f0f0f] border-[#3a3a3a] hover:bg-blue-600 hover:border-blue-600 flex flex-col items-center justify-center gap-2 transition-all h-20"
+                  className="aspect-square bg-[#0f0f0f] border-[#3a3a3a] hover:bg-gray-700 hover:border-gray-500 flex flex-col items-center justify-center gap-2 transition-all h-20"
                   onClick={() => handleShapeAdd(shape)}
                 >
                   <shape.icon className={`h-7 w-7 ${shape.color}`} />
@@ -152,7 +152,7 @@ export function ElementsPanel({
                 <Button
                   key={overlay.name}
                   variant="outline"
-                  className="w-full justify-start bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-blue-600 hover:border-blue-600 transition-all h-12 font-medium"
+                  className="w-full justify-start bg-[#0f0f0f] border-[#3a3a3a] text-white hover:bg-gray-700 hover:border-gray-500 transition-all h-12 font-medium"
                   onClick={() => handleOverlayAdd(overlay)}
                 >
                   <div
@@ -317,7 +317,7 @@ export function ElementsPanel({
                   size="sm"
                   className={`bg-[#0f0f0f] border-[#3a3a3a] text-white transition-all gap-2 h-12 font-medium ${
                     selectedElement 
-                      ? "hover:bg-blue-600 hover:border-blue-600" 
+                      ? "hover:bg-gray-700 hover:border-gray-500" 
                       : "opacity-50 cursor-not-allowed"
                   }`}
                   onClick={() => handleAnimationApply(animation)}

@@ -43,6 +43,7 @@ interface Element {
 interface PreviewWindowProps {
   isPlaying: boolean
   currentTime: number
+  duration: number
   onTimeUpdate: (time: number) => void
   onDurationUpdate?: (duration: number) => void
   clips: Clip[]
@@ -52,6 +53,7 @@ interface PreviewWindowProps {
   textLayers?: TextLayer[]
   elements?: Element[]
   onElementUpdate?: (id: string, updates: Partial<Element>) => void
+  onTextLayerUpdate?: (id: string, updates: Partial<TextLayer>) => void
   videoAdjustments?: {
     brightness: number
     contrast: number
@@ -65,6 +67,7 @@ interface PreviewWindowProps {
 export function PreviewWindow({
   isPlaying,
   currentTime,
+  duration,
   onTimeUpdate,
   onDurationUpdate,
   clips,
@@ -74,6 +77,7 @@ export function PreviewWindow({
   textLayers = [],
   elements = [],
   onElementUpdate,
+  onTextLayerUpdate,
   videoAdjustments = { brightness: 0, contrast: 0, saturation: 0, hue: 0 },
   playbackSpeed = 100,
   volume = 80,
@@ -84,6 +88,32 @@ export function PreviewWindow({
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map())
 
   const [showVideo, setShowVideo] = useState(false)
+  const [draggingTextId, setDraggingTextId] = useState<string | null>(null)
+
+  // Function to forcefully stop all audio
+  const stopAllAudio = () => {
+    const audioElements = audioElementsRef.current
+    console.log("[v0] Forcefully stopping all audio elements:", audioElements.size)
+    for (const [clipId, audio] of audioElements.entries()) {
+      const clip = clips.find(c => c.id === clipId && c.type === "audio")
+      if (clip) {
+        console.log("[v0] Force stopping audio:", clip.name, "paused:", audio.paused)
+        audio.pause()
+        audio.volume = 0
+        audio.currentTime = 0
+        // Force stop by clearing source
+        audio.src = ""
+        audio.load()
+        // Restore source after a brief moment
+        setTimeout(() => {
+          if (clip.url) {
+            audio.src = clip.url
+            audio.load()
+          }
+        }, 100)
+      }
+    }
+  }
 
   const animate = useCallback(() => {
     const canvas = canvasRef.current
@@ -299,27 +329,39 @@ export function PreviewWindow({
   }, [isPlaying, animate])
 
   useEffect(() => {
-    if (currentClip && currentClip.type === "video" && currentClip.url) {
+    // Always prioritize showing video when available
+    const videoClips = clips.filter(clip => clip.type === "video" && clip.url)
+    
+    if (videoClips.length > 0) {
+      // Use current clip if it's video, otherwise use the first available video
+      const videoToShow = (currentClip && currentClip.type === "video") ? currentClip : videoClips[0]
+      
       setShowVideo(true)
-      console.log("[v0] Loading video:", currentClip.name, "with trim:", currentClip.trimStart, "-", currentClip.trimEnd)
+      console.log("[v0] Loading video:", videoToShow.name, "with trim:", videoToShow.trimStart, "-", videoToShow.trimEnd)
+      
       // Set the video element to start at the trim start point
       const video = videoRef.current
       if (video) {
+        // Update video source if it changed
+        if (videoToShow.url && video.src !== videoToShow.url) {
+          video.src = videoToShow.url
+        }
+        
         // Wait for metadata to load, then set the correct start time
         const handleLoadedData = () => {
-          video.currentTime = currentClip.trimStart || 0
+          video.currentTime = videoToShow.trimStart || 0
           video.removeEventListener('loadeddata', handleLoadedData)
         }
         video.addEventListener('loadeddata', handleLoadedData)
         // Also try setting it immediately in case metadata is already loaded
         if (video.readyState >= 2) {
-          video.currentTime = currentClip.trimStart || 0
+          video.currentTime = videoToShow.trimStart || 0
         }
       }
     } else {
       setShowVideo(false)
     }
-  }, [currentClip])
+  }, [currentClip, clips])
 
   useEffect(() => {
     const video = videoRef.current
@@ -330,11 +372,15 @@ export function PreviewWindow({
       
       // Check if we have a current clip with trim boundaries
       if (currentClip && currentClip.trimEnd > currentClip.trimStart) {
-        // If we've reached the end of the trimmed section, pause and loop
+        // If we've reached the end of the trimmed section, pause video and audio
         if (videoTime >= currentClip.trimEnd) {
-          console.log("[v0] Reached trim end, looping to trim start")
-          video.currentTime = currentClip.trimStart
-          onTimeUpdate(0) // Report 0 for timeline display
+          console.log("[v0] Reached trim end, pausing video and stopping audio")
+          video.pause()
+          
+          // Forcefully stop all audio when video ends
+          stopAllAudio()
+          
+          onTimeUpdate(0) // Reset timeline to starting position
           return
         }
         
@@ -351,6 +397,13 @@ export function PreviewWindow({
       } else {
         // No trimming - report raw video time
         onTimeUpdate(videoTime)
+        
+        // Check if video has reached its natural end
+        if (video.ended || videoTime >= video.duration - 0.1) {
+          console.log("[v0] Video reached natural end, stopping audio")
+          stopAllAudio()
+          onTimeUpdate(0) // Reset timeline to starting position
+        }
       }
     }
 
@@ -379,11 +432,17 @@ export function PreviewWindow({
     video.addEventListener("timeupdate", handleTimeUpdate)
     video.addEventListener("loadedmetadata", handleLoadedMetadata)
     video.addEventListener("error", handleError)
+    video.addEventListener("ended", () => {
+      console.log("[v0] Video ended - stopping all audio and resetting timeline")
+      stopAllAudio()
+      onTimeUpdate(0) // Reset timeline to starting position
+    })
 
     return () => {
       video.removeEventListener("timeupdate", handleTimeUpdate)
       video.removeEventListener("loadedmetadata", handleLoadedMetadata)
       video.removeEventListener("error", handleError)
+      video.removeEventListener("ended", () => {})
     }
   }, [showVideo, onTimeUpdate, onDurationUpdate])
 
@@ -394,6 +453,11 @@ export function PreviewWindow({
     console.log("[v0] Play/Pause state changed:", isPlaying)
     
     if (isPlaying) {
+      // Unmute video when playing (unless we have custom audio clips)
+      const hasCustomAudio = clips.some(clip => clip.type === "audio")
+      if (!hasCustomAudio) {
+        video.muted = false
+      }
       video.play().catch((error) => {
         console.error("[v0] Error playing video:", error)
         // Try with muted if autoplay is blocked
@@ -404,6 +468,8 @@ export function PreviewWindow({
       })
     } else {
       video.pause()
+      // Mute video when paused to prevent any audio leakage
+      video.muted = true
     }
   }, [isPlaying, showVideo])
 
@@ -467,7 +533,12 @@ export function PreviewWindow({
     const currentClipIds = new Set(audioClips.map(clip => clip.id))
     for (const [clipId, audio] of audioElements.entries()) {
       if (!currentClipIds.has(clipId)) {
+        // Properly stop and clean up the audio element
         audio.pause()
+        audio.currentTime = 0
+        audio.volume = 0
+        audio.src = ""
+        audio.load() // This completely stops the audio
         audioElements.delete(clipId)
         console.log("[v0] Removed audio element for:", clipId)
       }
@@ -483,28 +554,113 @@ export function PreviewWindow({
   useEffect(() => {
     const audioElements = audioElementsRef.current
     
+    console.log("[v0] Audio sync - isPlaying:", isPlaying, "audio elements count:", audioElements.size, "video duration:", duration)
+    
     if (isPlaying) {
       // Start all audio clips
       for (const [clipId, audio] of audioElements.entries()) {
         const clip = clips.find(c => c.id === clipId && c.type === "audio")
         if (clip) {
+          // Restore volume before playing
+          audio.volume = volume / 100
           // Sync audio time with video time
           const audioTime = Math.max(0, clip.trimStart + currentTime)
-          console.log("[v0] Starting audio:", clip.name, "at time:", audioTime)
-          audio.currentTime = audioTime
-          audio.play().catch((error) => {
-            console.error("[v0] Error playing audio:", error)
-          })
+          
+          // Check if audio should play based on video duration
+          const videoClips = clips.filter(c => c.type === "video")
+          const shouldPlayAudio = videoClips.length === 0 || currentTime < duration
+          
+          // Additional check: if video has ended, force stop audio
+          const video = videoRef.current
+          const videoHasEnded = video && (video.ended || video.currentTime >= video.duration - 0.1)
+          
+          if (shouldPlayAudio && !videoHasEnded) {
+            console.log("[v0] Starting audio:", clip.name, "at time:", audioTime, "video duration:", duration, "current time:", currentTime)
+            audio.currentTime = audioTime
+            audio.play().catch((error) => {
+              console.error("[v0] Error playing audio:", error)
+            })
+          } else {
+            console.log("[v0] Pausing audio - reached video duration or video ended:", clip.name, "video duration:", duration, "current time:", currentTime, "video ended:", videoHasEnded)
+            audio.pause()
+            audio.volume = 0
+            audio.currentTime = 0
+          }
         }
       }
     } else {
       // Pause all audio clips
-      for (const audio of audioElements.values()) {
+      console.log("[v0] Pausing all audio clips, count:", audioElements.size)
+      for (const [clipId, audio] of audioElements.entries()) {
+        console.log("[v0] Pausing audio for clip:", clipId, "audio element:", audio)
+        // Force pause and ensure it's actually paused
         audio.pause()
-        console.log("[v0] Paused audio")
+        // Set volume to 0 to ensure no audio leakage
+        audio.volume = 0
+        // For longer audio clips, also reset currentTime to prevent issues
+        const clip = clips.find(c => c.id === clipId && c.type === "audio")
+        if (clip) {
+          // Reset to the correct position based on video time
+          audio.currentTime = Math.max(0, clip.trimStart + currentTime)
+        }
       }
     }
-  }, [isPlaying, clips, currentTime])
+  }, [isPlaying, clips, currentTime, duration])
+
+  // Continuously check if audio should be paused when video duration is reached
+  useEffect(() => {
+    const audioElements = audioElementsRef.current
+    const videoClips = clips.filter(c => c.type === "video")
+    
+    // Only apply duration limit if video is available
+    if (videoClips.length > 0 && currentTime >= duration) {
+      console.log("[v0] Video duration reached, pausing all audio - currentTime:", currentTime, "duration:", duration)
+      for (const [clipId, audio] of audioElements.entries()) {
+        const clip = clips.find(c => c.id === clipId && c.type === "audio")
+        if (clip) {
+          audio.pause()
+          audio.volume = 0
+          console.log("[v0] Paused audio at video duration:", clip.name)
+        }
+      }
+    }
+  }, [currentTime, duration, clips])
+
+  // Cleanup effect - stop all audio when component unmounts or clips change significantly
+  useEffect(() => {
+    return () => {
+      // Cleanup all audio elements when component unmounts
+      const audioElements = audioElementsRef.current
+      for (const [clipId, audio] of audioElements.entries()) {
+        audio.pause()
+        audio.currentTime = 0
+        audio.volume = 0
+        audio.src = ""
+        audio.load()
+      }
+      audioElements.clear()
+      console.log("[v0] Cleaned up all audio elements")
+    }
+  }, [])
+
+  // Additional cleanup when clips change - force stop any orphaned audio
+  useEffect(() => {
+    const audioElements = audioElementsRef.current
+    const currentAudioClipIds = new Set(clips.filter(clip => clip.type === "audio").map(clip => clip.id))
+    
+    // Force stop any audio elements that don't have corresponding clips
+    for (const [clipId, audio] of audioElements.entries()) {
+      if (!currentAudioClipIds.has(clipId)) {
+        console.log("[v0] Force stopping orphaned audio:", clipId)
+        audio.pause()
+        audio.currentTime = 0
+        audio.volume = 0
+        audio.src = ""
+        audio.load()
+        audioElements.delete(clipId)
+      }
+    }
+  }, [clips])
 
   const getVideoStyle = () => {
     if (!transform) return {}
@@ -553,19 +709,25 @@ export function PreviewWindow({
   return (
     <div className="h-full flex items-center justify-center bg-[#1a1a1a]">
       <div className="relative w-full max-w-4xl h-[340px] bg-black rounded-lg overflow-hidden">
-        {showVideo && currentClip?.url ? (
-          <video
-            ref={videoRef}
-            src={currentClip.url}
-            className="w-full h-full object-contain transition-all duration-200"
-            style={getVideoStyle()}
-            controls={false}
-            muted={false}
-            preload="metadata"
-            playsInline
-          />
-        ) : (
-          <canvas ref={canvasRef} width={1920} height={1080} className="w-full h-full object-contain" />
+        {showVideo ? (() => {
+          // Get the video to show (current clip if video, otherwise first available video)
+          const videoClips = clips.filter(clip => clip.type === "video" && clip.url)
+          const videoToShow = (currentClip && currentClip.type === "video") ? currentClip : videoClips[0]
+          
+          return videoToShow ? (
+            <video
+              ref={videoRef}
+              src={videoToShow.url}
+              className="w-full h-full object-contain transition-all duration-200 pointer-events-none"
+              style={getVideoStyle()}
+              controls={false}
+              muted={false}
+              preload="metadata"
+              playsInline
+            />
+          ) : null
+        })() : (
+          <canvas ref={canvasRef} width={1920} height={1080} className="w-full h-full object-contain pointer-events-none" />
         )}
 
         {showVideo && elements.length > 0 && (
@@ -603,11 +765,15 @@ export function PreviewWindow({
         )}
 
         {textLayers.length > 0 && (
-          <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0">
             {textLayers.map((textLayer) => (
               <div
                 key={textLayer.id}
-                className="absolute"
+                className={`absolute select-none z-10 transition-all duration-150 ${
+                  draggingTextId === textLayer.id 
+                    ? 'cursor-grabbing scale-105 opacity-80' 
+                    : 'cursor-move hover:scale-105'
+                }`}
                 style={{
                   left: `${(textLayer.x / 1920) * 100}%`,
                   top: `${(textLayer.y / 1080) * 100}%`,
@@ -615,6 +781,47 @@ export function PreviewWindow({
                   color: textLayer.color,
                   fontFamily: textLayer.fontFamily,
                   transform: "translate(-50%, -50%)",
+                  pointerEvents: "auto",
+                  textShadow: draggingTextId === textLayer.id ? '0 0 10px rgba(255,255,255,0.5)' : 'none',
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  
+                  setDraggingTextId(textLayer.id)
+                  
+                  const startX = e.clientX
+                  const startY = e.clientY
+                  const startTextX = textLayer.x
+                  const startTextY = textLayer.y
+                  
+                  // Store the preview container reference
+                  const previewContainer = e.currentTarget.closest('.relative')
+                  if (!previewContainer) return
+                  
+                  const handleMouseMove = (moveEvent: MouseEvent) => {
+                    const deltaX = moveEvent.clientX - startX
+                    const deltaY = moveEvent.clientY - startY
+                    
+                    // Use the stored preview container reference
+                    const containerRect = previewContainer.getBoundingClientRect()
+                    const scaleX = 1920 / containerRect.width
+                    const scaleY = 1080 / containerRect.height
+                    
+                    const newX = Math.max(0, Math.min(1920, startTextX + deltaX * scaleX))
+                    const newY = Math.max(0, Math.min(1080, startTextY + deltaY * scaleY))
+                    
+                    onTextLayerUpdate?.(textLayer.id, { x: newX, y: newY })
+                  }
+                  
+                  const handleMouseUp = () => {
+                    setDraggingTextId(null)
+                    document.removeEventListener('mousemove', handleMouseMove)
+                    document.removeEventListener('mouseup', handleMouseUp)
+                  }
+                  
+                  document.addEventListener('mousemove', handleMouseMove)
+                  document.addEventListener('mouseup', handleMouseUp)
                 }}
               >
                 {textLayer.text}

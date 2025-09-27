@@ -151,7 +151,7 @@ export function MediaPanel({
         {/* Upload Button */}
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white mb-4"
+          className="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white mb-4 shadow-lg hover:shadow-xl"
         >
           <Upload className="h-4 w-4 mr-2" />
           Upload Media
@@ -208,7 +208,7 @@ export function MediaPanel({
               </p>
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white shadow-lg hover:shadow-xl"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload First Media
@@ -295,7 +295,7 @@ export function MediaPanel({
                   {/* Remove Button - Always visible */}
                   {onClipRemove && (
                     <button
-                      className="w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-md flex items-center justify-center shadow-lg transition-colors"
+                      className="w-8 h-8 bg-gradient-to-r from-red-800 to-red-900 hover:from-red-700 hover:to-red-800 text-white rounded-md flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"
                       onClick={(e) => {
                         e.stopPropagation();
                         onClipRemove(clip.id);
@@ -308,7 +308,7 @@ export function MediaPanel({
 
                   {/* Play Button */}
                   <button
-                    className="w-7 h-7 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center justify-center shadow-lg transition-colors"
+                    className="w-8 h-8 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white rounded-md flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"
                     onClick={(e) => {
                       e.stopPropagation();
                       // First select the clip

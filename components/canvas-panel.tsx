@@ -168,7 +168,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a1a]">
+    <div className="h-full flex flex-col bg-[#1a1a1a] min-h-0">
       <div className="p-4 border-b border-[#3a3a3a] bg-[#2a2a2a]">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-gray-600 rounded-md flex items-center justify-center">
@@ -181,7 +181,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex w-full bg-[#1a1a1a] border-b border-[#3a3a3a]">
             <button
@@ -384,7 +384,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                   <Maximize2 className="h-4 w-4 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Scale</h3>
-                <span className="ml-auto text-2xl font-bold text-white">{transform.scale}%</span>
+                <span className="ml-auto text-lg font-semibold text-white">{transform.scale}%</span>
               </div>
               <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                 <Slider
@@ -405,7 +405,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                   <Settings className="h-4 w-4 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Opacity</h3>
-                <span className="ml-auto text-2xl font-bold text-white">{transform.opacity}%</span>
+                <span className="ml-auto text-lg font-semibold text-white">{transform.opacity}%</span>
               </div>
               <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                 <Slider
@@ -428,7 +428,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Brightness</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{adjustments.brightness[0]}</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{adjustments.brightness[0]}</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
@@ -448,7 +448,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Settings className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Contrast</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{adjustments.contrast[0]}</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{adjustments.contrast[0]}</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
@@ -468,7 +468,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Palette className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Saturation</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{adjustments.saturation[0]}</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{adjustments.saturation[0]}</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
@@ -488,7 +488,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Hue</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{adjustments.hue[0]}°</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{adjustments.hue[0]}°</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
@@ -511,7 +511,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                   <Zap className="h-4 w-4 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Playback Speed</h3>
-                <span className="ml-auto text-2xl font-bold text-white">{speed[0]}%</span>
+                <span className="ml-auto text-lg font-semibold text-white">{speed[0]}%</span>
               </div>
               
               <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-6">
@@ -552,7 +552,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Clock className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Start Time</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{timeSettings.startTime[0]}%</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{timeSettings.startTime[0]}%</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
@@ -572,7 +572,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Clock className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">End Time</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{timeSettings.endTime[0]}%</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{timeSettings.endTime[0]}%</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
@@ -592,7 +592,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Fade In</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{timeSettings.fadeIn[0]}s</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{timeSettings.fadeIn[0]}s</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
@@ -612,7 +612,7 @@ export function CanvasPanel({ selectedClip, onTransformChange, onAdjustmentsChan
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Fade Out</h3>
-                  <span className="ml-auto text-2xl font-bold text-white">{timeSettings.fadeOut[0]}s</span>
+                  <span className="ml-auto text-lg font-semibold text-white">{timeSettings.fadeOut[0]}s</span>
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#3a3a3a] rounded-md p-4">
                   <Slider
