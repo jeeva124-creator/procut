@@ -16,8 +16,6 @@ export function VerticalSidebar({ activePanel, setActivePanel }: VerticalSidebar
     { id: "canvas" as PanelType, icon: Layers, label: "Studio", color: "text-white" },
     { id: "text" as PanelType, icon: Type, label: "Text", color: "text-white" },
     { id: "audio" as PanelType, icon: Volume2, label: "Audio", color: "text-white" },
-    // { id: "videos" as PanelType, icon: Video, label: "Videos", color: "text-white" },
-    // { id: "images" as PanelType, icon: ImageIcon, label: "Images", color: "text-white" },
     { id: "elements" as PanelType, icon: Shapes, label: "Elements", color: "text-white" },
   ]
 

@@ -101,7 +101,8 @@ export function CanvasExport({ videoClip, audioClip }: CanvasExportProps) {
         if (video.currentTime < (videoClip.trimEnd || video.duration)) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           requestAnimationFrame(drawFrame);
-        } else {
+        }
+         else {
           // Stop recording when video ends
           mediaRecorder.stop();
         }
@@ -122,7 +123,8 @@ export function CanvasExport({ videoClip, audioClip }: CanvasExportProps) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-    } catch (err) {
+    }
+     catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed');
     } finally {
       setIsExporting(false);

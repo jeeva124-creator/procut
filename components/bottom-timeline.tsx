@@ -115,9 +115,12 @@ export function BottomTimeline({
     (e: React.MouseEvent, clipId: string) => {
       e.stopPropagation()
       if (!timelineRef.current) return
+
       const rect = timelineRef.current.getBoundingClientRect()
       const pixelsToSeconds = duration / rect.width
+
       const clip = clips.find((c) => c.id === clipId)
+
       if (!clip) return
       const clickX = e.clientX - rect.left
       const clipLeftPx = (clip.startTime / duration) * rect.width
@@ -196,6 +199,7 @@ export function BottomTimeline({
   )
 
   const splitClipAtPlayhead = useCallback(
+
     (clipId: string) => {
       const clip = clips.find((c) => c.id === clipId)
       if (!clip) return
@@ -206,6 +210,7 @@ export function BottomTimeline({
       setClips((prev) => prev.flatMap((c) => (c.id === clipId ? [first, second] : [c])))
       onClipSelect(second.id)
     },
+    
     [clips, currentTime, setClips, onClipSelect],
   )
 

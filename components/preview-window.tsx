@@ -540,7 +540,6 @@ export function PreviewWindow({
         audio.src = ""
         audio.load() // This completely stops the audio
         audioElements.delete(clipId)
-        console.log("[v0] Removed audio element for:", clipId)
       }
     }
 
@@ -620,7 +619,6 @@ export function PreviewWindow({
         if (clip) {
           audio.pause()
           audio.volume = 0
-          console.log("[v0] Paused audio at video duration:", clip.name)
         }
       }
     }
@@ -639,7 +637,6 @@ export function PreviewWindow({
         audio.load()
       }
       audioElements.clear()
-      console.log("[v0] Cleaned up all audio elements")
     }
   }, [])
 

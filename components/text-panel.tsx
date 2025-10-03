@@ -85,8 +85,8 @@ export function TextPanel({
       backgroundBoxColor,
       backgroundBoxPadding: backgroundBoxPadding[0],
     };
-    onTextLayerAdd?.(newTextLayer); // ✅ send to parent
-    setText(""); // clear input
+    onTextLayerAdd?.(newTextLayer); 
+    setText(""); 
   };
 
   return (
