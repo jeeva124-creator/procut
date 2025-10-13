@@ -46,10 +46,6 @@ interface TimelineProps {
 export function Timeline({ duration, currentTime, onTimeChange, selectedClip, onClipSelect }: TimelineProps) {
   const [clips, setClips] = useState<TimelineClip[]>([])
   const [tracks, setTracks] = useState<TimelineTrack[]>([
-    // { id: "video-1", name: "Video 1", type: "video", height: 80, locked: false, visible: true, muted: false },
-    // { id: "video-2", name: "Video 2", type: "video", height: 80, locked: false, visible: true, muted: false },
-    // { id: "audio-1", name: "Audio 1", type: "audio", height: 60, locked: false, visible: true, muted: false },
-    // { id: "audio-2", name: "Audio 2", type: "audio", height: 60, locked: false, visible: true, muted: false },
   ])
   const [zoom, setZoom] = useState([1])
   const [isDragging, setIsDragging] = useState(false)

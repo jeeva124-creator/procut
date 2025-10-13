@@ -63,9 +63,9 @@ export function AudioPanel({ selectedClip, clips, setClips }: AudioPanelProps) {
         const duration = Math.floor(audio.duration)
         
         // Decide type (music, voice, sfx) based on filename
-        const type: AudioTrack["type"] =
-          file.name.toLowerCase().includes("voice") ? "voice" :
-          file.name.toLowerCase().includes("sfx") ? "sfx" : "music"
+        // const type: AudioTrack["type"] =
+        //   file.name.toLowerCase().includes("voice") ? "voice" :
+        //   file.name.toLowerCase().includes("sfx") ? "sfx" : "music"
 
         // Add uploaded file into clips array
         setClips((prev) => [
